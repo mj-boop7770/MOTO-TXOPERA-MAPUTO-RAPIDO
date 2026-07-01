@@ -3,24 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registo de Moto-Táxi - Maputo</title>
+    <title>MOTO & TXOPELA - Maputo Rápido</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
         .container { background: white; width: 100%; max-width: 400px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #7f8c8d; font-size: 14px; margin-bottom: 20px; font-weight: bold; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; font-size: 14px; }
-        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
-        input:focus { border-color: #f1c40f; outline: none; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white; }
+        input:focus, select:focus { border-color: #f1c40f; outline: none; }
         .btn { width: 100%; background: #f1c40f; color: #2c3e50; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Registo de Moto-Táxi</h2>
+    <h2>MOTO & TXOPELA</h2>
+    <div class="subtitle">Maputo Rápido - Registo</div>
+    
     <form id="registoForm">
+        <div class="form-group">
+            <label>Tipo de Veículo</label>
+            <select id="tipo_veiculo" required>
+                <option value="moto">Moto (Duas rodas)</option>
+                <option value="txopela">Txopela (Três rodas)</option>
+            </select>
+        </div>
         <div class="form-group">
             <label>Nome do Motorista</label>
             <input type="text" id="nom" placeholder="Ex: Afonso Bila" required>
@@ -30,10 +40,10 @@
             <input type="tel" id="telephone" placeholder="Ex: 84XXXXXXX" required>
         </div>
         <div class="form-group">
-            <label>Matrícula de Moto</label>
+            <label>Matrícula do Veículo</label>
             <input type="text" id="plaque" placeholder="Ex: MM-XX-XX" required>
         </div>
-        <button type="submit" class="btn">Gravar Motorista</button>
+        <button type="submit" class="btn">Gravar no Sistema</button>
     </form>
 </div>
 
@@ -42,6 +52,7 @@
         e.preventDefault();
         
         const dados = {
+            tipo: document.getElementById('tipo_veiculo').value,
             nom: document.getElementById('nom').value,
             telephone: document.getElementById('telephone').value,
             plaque: document.getElementById('plaque').value
@@ -57,11 +68,10 @@
             alert(res.message);
             this.reset();
         } catch (error) {
-            alert("Erro de conexão com o servidor Python!");
+            alert("Erro de conexão com o servidor Octopus!");
         }
     });
 </script>
 
 </body>
-  </html>
-  
+</html>
