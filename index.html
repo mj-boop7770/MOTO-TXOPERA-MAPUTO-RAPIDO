@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registo de Moto-Táxi - Maputo</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .container { background: white; width: 100%; max-width: 400px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #2c3e50; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; font-size: 14px; }
+        input { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
+        input:focus { border-color: #f1c40f; outline: none; }
+        .btn { width: 100%; background: #f1c40f; color: #2c3e50; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Registo de Moto-Táxi</h2>
+    <form id="registoForm">
+        <div class="form-group">
+            <label>Nome do Motorista</label>
+            <input type="text" id="nom" placeholder="Ex: Afonso Bila" required>
+        </div>
+        <div class="form-group">
+            <label>Contacto (Vodacom/Movitel)</label>
+            <input type="tel" id="telephone" placeholder="Ex: 84XXXXXXX" required>
+        </div>
+        <div class="form-group">
+            <label>Matrícula de Moto</label>
+            <input type="text" id="plaque" placeholder="Ex: MM-XX-XX" required>
+        </div>
+        <button type="submit" class="btn">Gravar Motorista</button>
+    </form>
+</div>
+
+<script>
+    document.getElementById('registoForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const dados = {
+            nom: document.getElementById('nom').value,
+            telephone: document.getElementById('telephone').value,
+            plaque: document.getElementById('plaque').value
+        };
+
+        try {
+            const response = await fetch('/api/enregistrer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dados)
+            });
+            const res = await response.json();
+            alert(res.message);
+            this.reset();
+        } catch (error) {
+            alert("Erro de conexão com o servidor Python!");
+        }
+    });
+</script>
+
+</body>
+  </html>
+  
