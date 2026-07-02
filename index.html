@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Octopus2 - Registo de Motoristas</title>
+    <title>Haulzao-2 - Registo de Motoristas</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111827; color: #f9fafb; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
         .container { background: #1f2937; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-width: 400px; width: 100%; border-top: 5px solid #fbbf24; }
@@ -22,7 +22,7 @@
 
 <div class="container">
     <h2>MOTO & TXOPELA</h2>
-    <div class="subtitle">Registo de Motoristas - Maputo Rápido</div>
+    <div class="subtitle">Registo de Motoristas - Maputo Rápido (Haulzao-2)</div>
     
     <div id="geo-status" class="geo-status">🔄 A obter autorização GPS...</div>
 
@@ -57,7 +57,6 @@
     const geoStatus = document.getElementById('geo-status');
     const btnSubmit = document.getElementById('btnSubmit');
 
-    // Demander le GPS dès l'ouverture
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
@@ -103,11 +102,10 @@
             alert(resultado.message);
             if (response.ok) document.getElementById('formCadastro').reset();
         } catch (error) {
-            alert("Erro de conexão com o servidor Octopus!");
+            alert("Erro de conexão com o servidor Haulzao-2!");
         }
     });
 </script>
 
 </body>
-    </html>
-    
+</html>
