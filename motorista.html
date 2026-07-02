@@ -63,17 +63,18 @@
             
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(async (position) => {
+                    // Les clés correspondent strictement à ton script Python do_POST
                     const dados = {
                         tipo: document.getElementById('tipo').value,
-                        nome: document.getElementById('nom').value, // Correction ici
+                        nom: document.getElementById('nom').value, 
                         telephone: document.getElementById('telephone').value,
                         plaque: document.getElementById('plaque').value,
                         latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        status: "disponivel"
+                        longitude: position.coords.longitude
                     };
 
                     try {
+                        // REMARQUE : Ajuste '/api/gravar' ci-dessous avec le nom exact de ton fichier Python s'il diffère (ex: /api/salvar ou /api/index)
                         const response = await fetch('/api/gravar', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -88,7 +89,7 @@
                             alert("Erro ao gravar: " + errData);
                         }
                     } catch (err) {
-                        alert("Erro de conexão com o servidor.");
+                        alert("Erro de conexão com o serveur.");
                     }
                 }, (err) => {
                     alert("Erro de GPS: " + err.message);
@@ -99,5 +100,5 @@
         });
     </script>
 </body>
-    </html>
-    
+                        </html>
+                        
