@@ -22,7 +22,7 @@ class handler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length)
             dados = json.loads(body.decode('utf-8'))
 
-            # Structure exacte de ta base Haulzao-2
+            # Structure de ta base Haulzao-2
             novo_motorista = {
                 "tipo": dados.get("tipo"),
                 "nom": dados.get("nom"),
@@ -35,7 +35,6 @@ class handler(BaseHTTPRequestHandler):
             }
 
             db = firestore.client()
-            # Ajout du chauffeur dans la collection "motoristas"
             db.collection("motoristas").add(novo_motorista)
 
             # Réponse de succès au téléphone
@@ -47,9 +46,9 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps(resposta).encode('utf-8'))
 
         except Exception as e:
-            # Si Firebase refuse la connexion, on renvoie la vraie erreur au téléphone
+            # En cas de problème, on affiche la vraie erreur Firebase
             self.send_response(500)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({"status": "erro", "message": f"Erro Haulzao-2: {str(e)}"}).encode('utf-8'))
-                                 
+            
