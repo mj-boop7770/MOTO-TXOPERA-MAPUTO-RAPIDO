@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haulzao-2 - Painel de Controle</title>
+    <!-- Leaflet CSS para o Mapa -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #admin-map { height: 400px; width: 100%; border-radius: 12px; }
+        .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; }
+        .leaflet-popup-tip { background: #1e293b; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased">
+
+    <header class="bg-slate-800 border-b border-slate-700 px-4 py-4 shadow-lg sticky top-0 z-[1000]">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-black text-amber-500 tracking-tight">PAINEL HAULZAO-2</h1>
+                <p class="text-xs text-slate-400 font-medium">Controle Geral de Motoristas & Txopelas</p>
+            </div>
+            <a href="clientes.html" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition">
+                ➔ Ver o Mapa do Cliente
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-6">
+        
+        <!-- Section Carte Générale de Contrôle -->
+        <div class="mb-6 bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-xl">
+            <h2 class="text-base font-bold text-slate-300 mb-3 flex items-center gap-2">
+                🗺️ Localização de Todos os Condutores Activos
+            </h2>
+            <div id="admin-map" class="shadow-inner"></div>
+        </div>
+
+        <!-- Compteur rapide -->
+        <div class="mb-6 bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-center justify-between">
+            <span class="text-sm font-semibold text-slate-400">Total de condutores no sistema:</span>
+            <span id="total-count" class="text-2xl font-black text-amber-500">0</span>
+        </div>
+
+        <!-- Tableau des chauffeurs -->
+        <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-xl">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-700/50 text-slate-300 text-xs font-bold uppercase tracking-wider border-b border-slate-700">
+                            <th class="px-4 py-3">Tipo</th>
+                            <th class="px-4 py-3">Nome</th>
+                            <th class="px-4 py-3">Placa</th>
+                            <th class="px-4 py-3">Contacto</th>
+                            <th class="px-4 py-3 text-right">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-motoristas" class="divide-y divide-slate-700 text-sm">
+                        <tr id="loading-row">
+                            <td colspan="5" class="px-4 py-8 text-center text-slate-400 italic">
+                                A carregar lista de motoristas...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialiser la carte administrative sur Maputo
+        const adminMap = L.map('admin-map').setView([-25.965, 32.583], 13);
+
+        // Fond de carte clair et détaillé
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(adminMap);
+
+        async function carregarPainel() {
+            try {
+                const response = await fetch('/api/listar');
+                const motoristas = await response.json();
+                
+                const tbody = document.getElementById('tabela-motoristas');
+                const totalCount = document.getElementById('total-count');
+                
+                tbody.innerHTML = '';
+                totalCount.textContent = motoristas.length;
+
+                if (motoristas.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Nenhum motorista registado.</td></tr>`;
+                    return;
+                }
+
+                motoristas.forEach(m => {
+                    const emoji = m.tipo === "moto" ? "🏍️ Moto" : "🛺 Txopela";
+                    
+                    // 1. AJOUT DU MARQUEUR SUR LA CARTE DU PATRON
+                    if (m.latitude && m.longitude) {
+                        const cor = m.tipo === "moto" ? "#f97316" : "#22c55e";
+                        const icone = m.tipo === "moto" ? "🏍️" : "🛺";
+                        
+                        const marker = L.circleMarker([m.latitude, m.longitude], {
+                            radius: 10,
+                            fillColor: cor,
+                            color: "#ffffff",
+                            weight: 2,
+                            fillOpacity: 0.9
+                        }).addTo(adminMap);
+
+                        // Popup de contrôle pour le boss
+                        marker.bindPopup(`
+                            <div class="p-1">
+                                <b class="text-white text-sm">${icone} ${m.nom.toUpperCase()}</b>
+                                <p class="text-xs text-slate-400 mt-0.5">Placa: ${m.plaque}</p>
+                                <a href="tel:${m.telephone}" class="mt-2 block bg-emerald-600 text-white text-center text-xs font-bold py-1 px-2 rounded">
+                                    📞 Ligar: ${m.telephone}
+                                </a>
+                            </div>
+                        `);
+                    }
+
+                    // 2. AJOUT DE LA LIGNE DANS LE TABLEAU
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-700/30 transition";
+                    tr.innerHTML = `
+                        <td class="px-4 py-3.5 font-medium">${emoji}</td>
+                        <td class="px-4 py-3.5 font-bold text-white">${m.nom.toUpperCase()}</td>
+                        <td class="px-4 py-3.5 font-mono"><span class="bg-slate-700 px-2 py-0.5 rounded text-xs">${m.plaque}</span></td>
+                        <td class="px-4 py-3.5 text-slate-300">${m.telephone}</td>
+                        <td class="px-4 py-3.5 text-right">
+                            <a href="tel:${m.telephone}" class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1.5 px-3 rounded-lg shadow-md transition">
+                                📞 Ligar
+                            </a>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+            } catch (err) {
+                console.error("Erro ao carregar o painel:", err);
+                document.getElementById('tabela-motoristas').innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-red-400">Erro ao ligar à base de dados.</td></tr>`;
+            }
+        }
+
+        // Lancement du chargement
+        carregarPainel();
+    </script>
+</body>
+</html>
