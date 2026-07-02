@@ -3,69 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Haulzao-2 - Mapa de Motoristas</title>
+    <title>Haulzao-2 - Encontre seu Transporte</title>
+    <!-- Leaflet CSS pour la carte -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Tailwind CSS pour un design pro -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
-        body { background: #111827; color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        header { background: #1f2937; padding: 15px; text-align: center; border-bottom: 3px solid #fbbf24; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 1000; }
-        h1 { color: #fbbf24; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; }
-        .subtitle { color: #9ca3af; font-size: 12px; margin-top: 2px; }
-        #map { flex: 1; width: 100%; }
-        
-        .leaflet-popup-content-wrapper { background: #1f2937 !important; color: white !important; border-radius: 12px; padding: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        .leaflet-popup-tip { background: #1f2937 !important; }
-        .popup-container { display: flex; flex-direction: column; gap: 8px; min-width: 190px; }
-        .popup-title { font-weight: bold; font-size: 16px; color: #fbbf24; border-bottom: 1px solid #374151; padding-bottom: 4px; }
-        .popup-meta { color: #e5e7eb; font-size: 13px; }
-        .btn-call { background: #10b981; color: white !important; text-decoration: none; text-align: center; padding: 10px; border-radius: 8px; font-weight: bold; margin-top: 6px; display: block; transition: 0.2s; }
-        .btn-call:hover { background: #059669; }
+        #map { height: calc(100vh - 140px); width: 100%; }
+        /* Style personnalisé pour les popups */
+        .leaflet-popup-content-wrapper {
+            background: #1e293b;
+            color: white;
+            border-radius: 12px;
+            padding: 4px;
+        }
+        .leaflet-popup-tip { background: #1e293b; }
     </style>
 </head>
-<body>
+<body class="bg-slate-100 font-sans antialiased text-slate-900">
 
-<header>
-    <h1>MOTO & TXOPELA MAPUTO</h1>
-    <div class="subtitle">Haulzao-2 - Geolocalização Disponível em Tempo Real</div>
-</header>
+    <!-- En-tête de l'application Client -->
+    <header class="bg-amber-500 text-white px-4 py-3 shadow-md sticky top-0 z-[1000]">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-black tracking-tight">HAULZAO-2 MAPUTO</h1>
+                <p class="text-xs text-amber-100 font-medium">Motos & Txopelas em tempo real</p>
+            </div>
+            <a href="index.html" class="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-lg transition">
+                Área Motorista ➔
+            </a>
+        </div>
+    </header>
 
-<div id="map"></div>
+    <!-- Barre d'instructions et Légende -->
+    <div class="bg-white border-b border-slate-200 px-4 py-2 text-sm shadow-sm flex flex-wrap justify-between items-center gap-2">
+        <span class="text-slate-600 font-medium">💡 Clique num marcador para ligar ao motorista</span>
+        <div class="flex gap-4 text-xs font-semibold">
+            <span class="flex items-center gap-1"><span class="w-3 height h-3 bg-orange-500 rounded-full inline-block"></span> 🏍️ Moto</span>
+            <span class="flex items-center gap-1"><span class="w-3 height h-3 bg-green-500 rounded-full inline-block"></span> 🛺 Txopela</span>
+            <span class="flex items-center gap-1"><span class="w-3 height h-3 bg-blue-500 rounded-full inline-block"></span> 🔵 Tu estás aqui</span>
+        </div>
+    }</div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    const map = L.map('map').setView([-25.9692, 32.5732], 13);
+    <!-- Zone de la Carte -->
+    <div class="relative">
+        <div id="map"></div>
+        
+        <!-- Bouton Ma Position Flottant -->
+        <button id="btn-location" class="absolute bottom-6 right-6 z-[1000] bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition">
+            📍 Minha Posição
+        </button>
+    </div>
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap &copy; CARTO'
-    }).addTo(map);
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Initialisation de la carte centrée sur Maputo
+        const map = L.map('map').setView([-25.965, 32.583], 14);
 
-    async function carregarMapa() {
-        try {
-            const response = await fetch('/api/listar');
-            const motoristas = await response.json();
-            
-            motoristas.forEach(moto => {
-                if (moto.latitude && moto.longitude) {
-                    const marker = L.marker([moto.latitude, moto.longitude]).addTo(map);
-                    
-                    const popupContent = `
-                        <div class="popup-container">
-                            <div class="popup-title">${moto.nom}</div>
-                            <div class="popup-meta">Veículo: <b>${moto.tipo.toUpperCase()}</b></div>
-                            <div class="popup-meta">🆔 Matrícula: <b>${moto.plaque}</b></div>
-                            <a href="tel:${moto.telephone}" class="btn-call">📞 Chamar Motorista</a>
-                        </div>
-                    `;
-                    marker.bindPopup(popupContent);
-                }
-            });
-        } catch (error) {
-            console.error("Erro ao conectar com Haulzao-2:", error);
+        // 🗺️ STYLE DE CARTE : Rues claires et ultra-précises (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        let userMarker = null;
+
+        // Fonction pour géolocaliser le client
+        function localizarCliente() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    map.setView([lat, lng], 16); // Zoom serré pour la précision
+
+                    if (userMarker) {
+                        userMarker.setLatLng([lat, lng]);
+                    } else {
+                        // Point bleu pour le client
+                        userMarker = L.circleMarker([lat, lng], {
+                            radius: 9,
+                            fillColor: "#2563eb",
+                            color: "#ffffff",
+                            weight: 3,
+                            fillOpacity: 1
+                        }).addTo(map).bindPopup("<b style='color:#ffffff;'>Tu estás aqui</b>").openPopup();
+                    }
+                }, error => {
+                    alert("Erro ao obter localização. Ative o GPS do seu telefone.");
+                }, { enableHighAccuracy: true });
+            }
         }
-    }
 
-    carregarMapa();
-</script>
+        // Géolocaliser automatiquement au démarrage et sur le clic du bouton
+        localizarCliente();
+        document.getElementById('btn-location').addEventListener('click', localizarCliente);
 
+        // 🔄 FONCTION POUR CHARGER LES CHAUFFEURS DEPUIS L'API
+        async function carregarMotoristas() {
+            try {
+                const response = await fetch('/api/listar');
+                const motoristas = await response.json();
+
+                motoristas.forEach(m => {
+                    if (m.latitude && m.longitude) {
+                        // Choisir la couleur du marqueur selon le type
+                        const cor = m.tipo === "moto" ? "#f97316" : "#22c55e";
+                        const iconeEmoji = m.tipo === "moto" ? "🏍️" : "🛺";
+
+                        // Création d'un marqueur personnalisé circulaire coloré
+                        const marker = L.circleMarker([m.latitude, m.longitude], {
+                            radius: 12,
+                            fillColor: cor,
+                            color: "#ffffff",
+                            weight: 2,
+                            fillOpacity: 0.9
+                        }).addTo(map);
+
+                        // Contenu de la bulle d'appel
+                        const popupContent = `
+                            <div class="p-1">
+                                <h3 class="text-base font-bold flex items-center gap-1">${iconeEmoji} ${m.nom.toUpperCase()}</h3>
+                                <p class="text-xs text-slate-300 mt-1">Placa: <span class="bg-slate-700 px-1.5 py-0.5 rounded font-mono text-white">${m.plaque}</span></p>
+                                <a href="tel:${m.telephone}" class="mt-3 block w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-sm py-2 px-3 rounded-lg shadow transition">
+                                    📞 Chamar: ${m.telephone}
+                                </a>
+                            </div>
+                        `;
+                        marker.bindPopup(popupContent);
+                    }
+                });
+            } catch (err) {
+                console.error("Erro ao carregar dados do Haulzao-2:", err);
+            }
+        }
+
+        // Charger les marqueurs dès que la page s'ouvre
+        carregarMotoristas();
+    </script>
 </body>
-</html>
+         </html>
+    
