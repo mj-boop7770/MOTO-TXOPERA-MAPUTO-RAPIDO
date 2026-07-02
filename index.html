@@ -3,109 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Haulzao-2 - Registo de Motoristas</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111827; color: #f9fafb; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
-        .container { background: #1f2937; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-width: 400px; width: 100%; border-top: 5px solid #fbbf24; }
-        h2 { text-align: center; margin-bottom: 5px; color: #fbbf24; font-size: 24px; }
-        .subtitle { text-align: center; color: #9ca3af; font-size: 14px; margin-bottom: 25px; }
-        .form-group { margin-bottom: 18px; display: flex; flex-direction: column; }
-        label { margin-bottom: 8px; font-size: 14px; color: #d1d5db; font-weight: 600; }
-        input, select { background: #374151; border: 1px solid #4b5563; padding: 12px; border-radius: 8px; color: white; font-size: 15px; outline: none; transition: 0.2s; }
-        input:focus, select:focus { border-color: #fbbf24; box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2); }
-        button { background: #fbbf24; color: #111827; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; transition: 0.2s; }
-        button:hover { background: #f59e0b; }
-        .geo-status { font-size: 13px; color: #10b981; text-align: center; margin-bottom: 20px; font-style: italic; font-weight: bold; }
-    </style>
+    <title>Haulzao-2 Maputo - Entrada Única</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col justify-between antialiased">
 
-<div class="container">
-    <h2>MOTO & TXOPELA</h2>
-    <div class="subtitle">Registo de Motoristas - Maputo Rápido (Haulzao-2)</div>
-    
-    <div id="geo-status" class="geo-status">🔄 A obter autorização GPS...</div>
+    <header class="py-6 text-center border-b border-slate-800 bg-slate-850/50 backdrop-blur">
+        <h1 class="text-3xl font-black tracking-tight text-amber-500">HAULZAO-2 MAPUTO</h1>
+        <p class="text-xs text-slate-400 mt-1 font-medium font-mono uppercase tracking-widest">Plataforma Oficial de Mobilidade Rápida</p>
+    </header>
 
-    <form id="formCadastro">
-        <input type="hidden" id="lat" value="0">
-        <input type="hidden" id="lng" value="0">
-
-        <div class="form-group">
-            <label>Tipo de Veículo</label>
-            <select id="tipo" required>
-                <option value="moto">Moto (Duas rodas)</option>
-                <option value="txopela">Txopela (Três rodas)</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Nome Completo</label>
-            <input type="text" id="nom" required placeholder="Ex: Afonso Bila">
-        </div>
-        <div class="form-group">
-            <label>Número de Telefone</label>
-            <input type="tel" id="telephone" required placeholder="Ex: 841234567">
-        </div>
-        <div class="form-group">
-            <label>Número de Matrícula</label>
-            <input type="text" id="plaque" required placeholder="Ex: AG 432 MC">
-        </div>
-        <button type="submit" id="btnSubmit" disabled style="opacity: 0.5; cursor: not-allowed;">Aguardando GPS...</button>
-    </form>
-</div>
-
-<script>
-    const geoStatus = document.getElementById('geo-status');
-    const btnSubmit = document.getElementById('btnSubmit');
-
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                document.getElementById('lat').value = position.coords.latitude;
-                document.getElementById('lng').value = position.coords.longitude;
-                geoStatus.innerText = "📍 Localização GPS Ativada!";
-                geoStatus.style.color = "#10b981";
-                btnSubmit.innerText = "Gravar no Sistema";
-                btnSubmit.disabled = false;
-                btnSubmit.style.opacity = "1";
-                btnSubmit.style.cursor = "pointer";
-            },
-            (error) => {
-                geoStatus.style.color = "#ef4444";
-                geoStatus.innerText = "❌ Erro: Ative o GPS nas definições para se registar.";
-                btnSubmit.innerText = "Bloqueado (Falta GPS)";
-            },
-            { enableHighAccuracy: true }
-        );
-    } else {
-        geoStatus.innerText = "GPS não suportado pelo navegador.";
-    }
-
-    document.getElementById('formCadastro').addEventListener('submit', async (e) => {
-        e.preventDefault();
+    <main class="max-w-md mx-auto w-full px-4 py-8 flex-grow flex flex-col justify-center gap-5">
         
-        const dados = {
-            tipo: document.getElementById('tipo').value,
-            nom: document.getElementById('nom').value,
-            telephone: document.getElementById('telephone').value,
-            plaque: document.getElementById('plaque').value,
-            latitude: parseFloat(document.getElementById('lat').value),
-            longitude: parseFloat(document.getElementById('lng').value)
-        };
+        <div class="text-center mb-4">
+            <p class="text-slate-300 text-sm font-medium">Bem-vindo! Escolha o seu perfil para continuar:</p>
+        </div>
 
-        try {
-            const response = await fetch('/api/enregistrer', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(dados)
-            });
-            const resultado = await response.json();
-            alert(resultado.message);
-            if (response.ok) document.getElementById('formCadastro').reset();
-        } catch (error) {
-            alert("Erro de conexão com o servidor Haulzao-2!");
+        <a href="clientes.html" class="group relative flex items-center gap-4 bg-gradient-to-r from-amber-500 to-orange-500 p-5 rounded-2xl shadow-xl hover:from-amber-400 hover:to-orange-400 active:scale-[0.98] transition-all">
+            <span class="text-3xl">📍</span>
+            <div class="text-left">
+                <h2 class="font-black text-white text-lg tracking-tight">SOU CLIENTE</h2>
+                <p class="text-xs text-amber-100 font-medium">Ver mapa, localizar motos e chamar transporte</p>
+            </div>
+            <span class="absolute right-5 text-xl opacity-50 group-hover:translate-x-1 transition-transform">➔</span>
+        </a>
+
+        <a href="motorista.html" class="group relative flex items-center gap-4 bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-lg hover:bg-slate-750 hover:border-slate-600 active:scale-[0.98] transition-all">
+            <span class="text-3xl">🏍️</span>
+            <div class="text-left">
+                <h2 class="font-black text-amber-500 text-lg tracking-tight">SOU CONDUTOR</h2>
+                <p class="text-xs text-slate-400 font-medium">Entrar em serviço e atualizar a minha posição GPS</p>
+            </div>
+            <span class="absolute right-5 text-xl opacity-50 group-hover:translate-x-1 transition-transform">➔</span>
+        </a>
+
+        <div class="mt-4 border-t border-slate-800 pt-6">
+            <button onclick="acessarPainelBoss()" class="w-full py-3 bg-slate-800/40 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-amber-500 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 tracking-wider uppercase">
+                👑 Painel de Administração (MUJOS)
+            </button>
+        </div>
+
+    </main>
+
+    <footer class="py-4 text-center border-t border-slate-800 text-[10px] text-slate-500 font-medium font-mono uppercase tracking-wider">
+        &copy; 2026 Haulzao-2 &bull; Sistema Desenvolvido para Maputo
+    </footer>
+
+    <script>
+        // Petite sécurité pour que n'importe qui ne clique pas sur ton bouton de boss
+        function acessarPainelBoss() {
+            const senha = prompt("Introduza o código de acesso MUJOS OCTOPUS:");
+            // Tu peux changer "1234" par le mot de passe secret de ton choix
+            if (senha === "1234") {
+                window.location.href = "painel.html";
+            } else if (senha !== null) {
+                alert("Código incorreto. Acesso recusado.");
+            }
         }
-    });
-</script>
-
+    </script>
 </body>
 </html>
