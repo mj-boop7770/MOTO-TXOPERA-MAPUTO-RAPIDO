@@ -3,59 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MOTO & TXOPELA - Maputo Rápido</title>
+    <title>Octopus2 - Registo de Motoristas</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-        body { background-color: #f4f6f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .container { background: white; width: 100%; max-width: 400px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h2 { text-align: center; color: #2c3e50; margin-bottom: 5px; }
-        .subtitle { text-align: center; color: #7f8c8d; font-size: 14px; margin-bottom: 20px; font-weight: bold; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; font-size: 14px; }
-        input, select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; background: white; }
-        input:focus, select:focus { border-color: #f1c40f; outline: none; }
-        .btn { width: 100%; background: #f1c40f; color: #2c3e50; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer; margin-top: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #111827; color: #f9fafb; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .container { background: #1f2937; padding: 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); max-width: 400px; width: 100%; border-top: 5px solid #fbbf24; }
+        h2 { text-align: center; margin-bottom: 5px; color: #fbbf24; font-size: 24px; }
+        .subtitle { text-align: center; color: #9ca3af; font-size: 14px; margin-bottom: 25px; }
+        .form-group { margin-bottom: 18px; display: flex; flex-direction: column; }
+        label { margin-bottom: 8px; font-size: 14px; color: #d1d5db; font-weight: 600; }
+        input, select { background: #374151; border: 1px solid #4b5563; padding: 12px; border-radius: 8px; color: white; font-size: 15px; outline: none; transition: 0.2s; }
+        input:focus, select:focus { border-color: #fbbf24; box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.2); }
+        button { background: #fbbf24; color: #111827; border: none; padding: 14px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 10px; transition: 0.2s; }
+        button:hover { background: #f59e0b; }
+        .geo-status { font-size: 13px; color: #10b981; text-align: center; margin-bottom: 20px; font-style: italic; font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>MOTO & TXOPELA</h2>
-    <div class="subtitle">Maputo Rápido - Registo</div>
+    <div class="subtitle">Registo de Motoristas - Maputo Rápido</div>
     
-    <form id="registoForm">
+    <div id="geo-status" class="geo-status">🔄 A obter autorização GPS...</div>
+
+    <form id="formCadastro">
+        <input type="hidden" id="lat" value="0">
+        <input type="hidden" id="lng" value="0">
+
         <div class="form-group">
             <label>Tipo de Veículo</label>
-            <select id="tipo_veiculo" required>
+            <select id="tipo" required>
                 <option value="moto">Moto (Duas rodas)</option>
                 <option value="txopela">Txopela (Três rodas)</option>
             </select>
         </div>
         <div class="form-group">
-            <label>Nome do Motorista</label>
-            <input type="text" id="nom" placeholder="Ex: Afonso Bila" required>
+            <label>Nome Completo</label>
+            <input type="text" id="nom" required placeholder="Ex: Afonso Bila">
         </div>
         <div class="form-group">
-            <label>Contacto (Vodacom/Movitel)</label>
-            <input type="tel" id="telephone" placeholder="Ex: 84XXXXXXX" required>
+            <label>Número de Telefone</label>
+            <input type="tel" id="telephone" required placeholder="Ex: 841234567">
         </div>
         <div class="form-group">
-            <label>Matrícula do Veículo</label>
-            <input type="text" id="plaque" placeholder="Ex: MM-XX-XX" required>
+            <label>Número de Matrícula</label>
+            <input type="text" id="plaque" required placeholder="Ex: AG 432 MC">
         </div>
-        <button type="submit" class="btn">Gravar no Sistema</button>
+        <button type="submit" id="btnSubmit" disabled style="opacity: 0.5; cursor: not-allowed;">Aguardando GPS...</button>
     </form>
 </div>
 
 <script>
-    document.getElementById('registoForm').addEventListener('submit', async function(e) {
+    const geoStatus = document.getElementById('geo-status');
+    const btnSubmit = document.getElementById('btnSubmit');
+
+    // Demander le GPS dès l'ouverture
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                document.getElementById('lat').value = position.coords.latitude;
+                document.getElementById('lng').value = position.coords.longitude;
+                geoStatus.innerText = "📍 Localização GPS Ativada!";
+                geoStatus.style.color = "#10b981";
+                btnSubmit.innerText = "Gravar no Sistema";
+                btnSubmit.disabled = false;
+                btnSubmit.style.opacity = "1";
+                btnSubmit.style.cursor = "pointer";
+            },
+            (error) => {
+                geoStatus.style.color = "#ef4444";
+                geoStatus.innerText = "❌ Erro: Ative o GPS nas definições para se registar.";
+                btnSubmit.innerText = "Bloqueado (Falta GPS)";
+            },
+            { enableHighAccuracy: true }
+        );
+    } else {
+        geoStatus.innerText = "GPS não suportado pelo navegador.";
+    }
+
+    document.getElementById('formCadastro').addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const dados = {
-            tipo: document.getElementById('tipo_veiculo').value,
+            tipo: document.getElementById('tipo').value,
             nom: document.getElementById('nom').value,
             telephone: document.getElementById('telephone').value,
-            plaque: document.getElementById('plaque').value
+            plaque: document.getElementById('plaque').value,
+            latitude: parseFloat(document.getElementById('lat').value),
+            longitude: parseFloat(document.getElementById('lng').value)
         };
 
         try {
@@ -64,9 +99,9 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(dados)
             });
-            const res = await response.json();
-            alert(res.message);
-            this.reset();
+            const resultado = await response.json();
+            alert(resultado.message);
+            if (response.ok) document.getElementById('formCadastro').reset();
         } catch (error) {
             alert("Erro de conexão com o servidor Octopus!");
         }
@@ -74,4 +109,5 @@
 </script>
 
 </body>
-</html>
+    </html>
+    
