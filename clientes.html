@@ -3,77 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MOTO & TXOPELA - Pedir Viagem</title>
+    <title>Octopus2 - Mapa de Motoristas</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-        body { background-color: #f4f6f9; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .header { text-align: center; margin-bottom: 20px; max-width: 400px; width: 100%; }
-        h2 { color: #2c3e50; }
-        .subtitle { color: #7f8c8d; font-size: 14px; font-weight: bold; margin-top: 5px; }
-        .lista-motoristas { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 15px; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border-left: 5px solid #f1c40f; display: flex; flex-direction: column; gap: 10px; }
-        .card.txopela { border-left-color: #3498db; } /* Bleu pour les Txopelas, Jaune pour les Motos */
-        .info-row { display: flex; justify-content: space-between; align-items: center; }
-        .nome { font-size: 18px; font-weight: bold; color: #2c3e50; }
-        .badge { padding: 4px 8px; border-radius: 20px; font-size: 12px; font-weight: bold; text-transform: uppercase; background: #f1c40f; color: #2c3e50; }
-        .card.txopela .badge { background: #3498db; color: white; }
-        .matricula { color: #7f8c8d; font-size: 14px; }
-        .btn-call { background: #2ecc71; color: white; text-decoration: none; text-align: center; padding: 12px; border-radius: 8px; font-weight: bold; font-size: 16px; display: flex; justify-content: center; align-items: center; gap: 10px; }
-        .no-data { text-align: center; color: #7f8c8d; margin-top: 40px; font-style: italic; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background: #111827; color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        header { background: #1f2937; padding: 15px; text-align: center; border-bottom: 3px solid #fbbf24; box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 1000; }
+        h1 { color: #fbbf24; font-size: 20px; text-transform: uppercase; letter-spacing: 1px; }
+        .subtitle { color: #9ca3af; font-size: 12px; margin-top: 2px; }
+        #map { flex: 1; width: 100%; }
+        
+        /* Personnalisation des bulles d'infos sur la carte */
+        .leaflet-popup-content-wrapper { background: #1f2937 !important; color: white !important; border-radius: 12px; padding: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .leaflet-popup-tip { background: #1f2937 !important; }
+        .popup-container { display: flex; flex-direction: column; gap: 8px; min-width: 190px; }
+        .popup-title { font-weight: bold; font-size: 16px; color: #fbbf24; border-bottom: 1px solid #374151; padding-bottom: 4px; }
+        .popup-meta { color: #e5e7eb; font-size: 13px; }
+        .btn-call { background: #10b981; color: white !important; text-decoration: none; text-align: center; padding: 10px; border-radius: 8px; font-weight: bold; margin-top: 6px; display: block; transition: 0.2s; }
+        .btn-call:hover { background: #059669; }
     </style>
 </head>
 <body>
 
-<div class="header">
-    <h2>MOTO & TXOPELA</h2>
-    <div class="subtitle">Chamar um Motorista Rápido</div>
-</div>
+<header>
+    <h1>MOTO & TXOPELA MAPUTO</h1>
+    <div class="subtitle">Octopus2 - Geolocalização Disponível em Tempo Real</div>
+</header>
 
-<div class="lista-motoristas" id="lista">
-    <div class="no-data">A carregar motoristas disponíveis...</div>
-</div>
+<div id="map"></div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Fonction magique pour aller chercher les chauffeurs dans notre API Octopus
-    async function carregarMotoristas() {
-        const listaDiv = document.getElementById('lista');
-        
+    // Initialiser la carte et la centrer sur Maputo par défaut
+    const map = L.map('map').setView([-25.9692, 32.5732], 13);
+
+    // Fond de carte version sombre (Dark Mode)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO'
+    }).addTo(map);
+
+    // Charger les chauffeurs depuis Octopus2
+    async function carregarMapa() {
         try {
             const response = await fetch('/api/listar');
             const motoristas = await response.json();
             
-            if (motoristas.length === 0) {
-                listaDiv.innerHTML = '<div class="no-data">Nenhum motorista disponível no momento. 😔</div>';
-                return;
-            }
-            
-            listaDiv.innerHTML = ''; // On vide le message de chargement
-            
             motoristas.forEach(moto => {
-                const isTxopela = moto.tipo === 'txopela';
-                const card = document.createElement('div');
-                card.className = `card ${isTxopela ? 'txopela' : ''}`;
-                
-                card.innerHTML = `
-                    <div class="info-row">
-                        <span class="nome">${moto.nom}</span>
-                        <span class="badge">${moto.tipo}</span>
-                    </div>
-                    <div class="matricula">Matrícula: <strong>${moto.plaque}</strong></div>
-                    <a href="tel:${moto.telephone}" class="btn-call">📞 Chamar (9${moto.telephone.substring(1)})</a>
-                `;
-                listaDiv.appendChild(card);
+                if (moto.latitude && moto.longitude) {
+                    // Création du marqueur
+                    const marker = L.marker([moto.latitude, moto.longitude]).addTo(map);
+                    
+                    // Design du pop-up au clic
+                    const popupContent = `
+                        <div class="popup-container">
+                            <div class="popup-title">${moto.nom}</div>
+                            <div class="popup-meta"> veículo: <b>${moto.tipo.toUpperCase()}</b></div>
+                            <div class="popup-meta">🆔 Matrícula: <b>${moto.plaque}</b></div>
+                            <a href="tel:${moto.telephone}" class="btn-call">📞 Chamar Motorista</a>
+                        </div>
+                    `;
+                    marker.bindPopup(popupContent);
+                }
             });
-            
         } catch (error) {
-            listaDiv.innerHTML = '<div class="no-data">Erro ao carregar o sistema Octopus.</div>';
+            console.error("Erro ao conectar com Octopus2:", error);
         }
     }
 
-    // On lance le chargement dès que la page s'ouvre
-    carregarMotoristas();
+    carregarMapa();
 </script>
 
 </body>
-      </html>
-      
+</html>
