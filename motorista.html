@@ -46,7 +46,7 @@
 
                 <div class="pt-2">
                     <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-black py-3.5 px-4 rounded-xl shadow-lg active:scale-[0.98] transition-all uppercase tracking-wider text-sm">
-                        🚀 Enregistrer dans le système
+                        🚀 ENREGISTRE DANS LE SYSTÈME
                     </button>
                 </div>
             </form>
@@ -63,7 +63,6 @@
             
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(async (position) => {
-                    // Les clés correspondent strictement à ton script Python do_POST
                     const dados = {
                         tipo: document.getElementById('tipo').value,
                         nom: document.getElementById('nom').value, 
@@ -74,8 +73,8 @@
                     };
 
                     try {
-                        // REMARQUE : Ajuste '/api/gravar' ci-dessous avec le nom exact de ton fichier Python s'il diffère (ex: /api/salvar ou /api/index)
-                        const response = await fetch('/api/gravar', {
+                        // Ligne 58 : Route unifiée pointant vers ton fichier d'API Vercel
+                        const response = await fetch('/api/index', { 
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(dados)
@@ -89,7 +88,7 @@
                             alert("Erro ao gravar: " + errData);
                         }
                     } catch (err) {
-                        alert("Erro de conexão com o serveur.");
+                        alert("Erro de conexão com o servidor.");
                     }
                 }, (err) => {
                     alert("Erro de GPS: " + err.message);
@@ -100,5 +99,5 @@
         });
     </script>
 </body>
-                        </html>
-                        
+    </html>
+    
