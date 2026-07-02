@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haulzao-2 - Área do Motorista</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col justify-between antialiased">
+
+    <header class="bg-slate-800 border-b border-slate-700 px-4 py-4 shadow-md flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-black text-amber-500 tracking-tight">ÁREA CONDUTOR</h1>
+            <p class="text-xs text-slate-400">Atualize a sua localização no Haulzao-2</p>
+        </div>
+        <a href="index.html" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition">
+            🏠 Voltar
+        </a>
+    </header>
+
+    <main class="max-w-md mx-auto w-full px-4 py-8 flex-grow flex flex-col justify-center">
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl">
+            <form id="form-motorista" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Tipo de Transporte</label>
+                    <select id="tipo" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white font-medium focus:border-amber-500 focus:outline-none">
+                        <option value="moto">🏍️ Moto</option>
+                        <option value="txopela">🛺 Txopela</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Nome do Condutor</label>
+                    <input type="text" id="nom" required placeholder="Ex: João" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Número de Telefone</label>
+                    <input type="tel" id="telephone" required placeholder="Ex: 84XXXXXXX" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Número da Placa</label>
+                    <input type="text" id="plaque" required placeholder="Ex: MM-XX-XX" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none">
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-black py-3.5 px-4 rounded-xl shadow-lg active:scale-[0.98] transition-all uppercase tracking-wider text-sm">
+                        🚀 Gravar no Sistema
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer class="py-4 text-center border-t border-slate-800 text-[10px] text-slate-500 font-mono">
+        Haulzao-2 &bull; Maputo 2026
+    </footer>
+
+    <script>
+        document.getElementById('form-motorista').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const dados = {
+                        tipo: document.getElementById('tipo').value,
+                        nom: document.getElementById('nom').value,
+                        telephone: document.getElementById('telephone').value,
+                        plaque: document.getElementById('plaque').value,
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        status: "disponivel"
+                    };
+
+                    try {
+                        // Envoi direct à ton API Firebase existante
+                        const response = await fetch('/api/gravar', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(dados)
+                        });
+
+                        if (response.ok) {
+                            alert("Sucesso! A tua posição foi gravada no sistema.");
+                            window.location.href = "index.html"; // Retour à l'accueil unique
+                        } else {
+                            alert("Erro ao gravar os dados no servidor.");
+                        }
+                    } catch (err) {
+                        alert("Erro de conexão com o servidor.");
+                    }
+                }, () => {
+                    alert("Por favor, ativa o GPS para te registares.");
+                }, { enableHighAccuracy: true });
+            } else {
+                alert("O teu telefone não suporta Geolocalização.");
+            }
+        });
+    </script>
+</body>
+                      </html>
+                                                                                                          
