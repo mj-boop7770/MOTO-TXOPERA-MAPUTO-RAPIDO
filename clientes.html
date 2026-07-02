@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Octopus2 - Mapa de Motoristas</title>
+    <title>Haulzao-2 - Mapa de Motoristas</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
@@ -13,7 +13,6 @@
         .subtitle { color: #9ca3af; font-size: 12px; margin-top: 2px; }
         #map { flex: 1; width: 100%; }
         
-        /* Personnalisation des bulles d'infos sur la carte */
         .leaflet-popup-content-wrapper { background: #1f2937 !important; color: white !important; border-radius: 12px; padding: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
         .leaflet-popup-tip { background: #1f2937 !important; }
         .popup-container { display: flex; flex-direction: column; gap: 8px; min-width: 190px; }
@@ -27,22 +26,19 @@
 
 <header>
     <h1>MOTO & TXOPELA MAPUTO</h1>
-    <div class="subtitle">Octopus2 - Geolocalização Disponível em Tempo Real</div>
+    <div class="subtitle">Haulzao-2 - Geolocalização Disponível em Tempo Real</div>
 </header>
 
 <div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Initialiser la carte et la centrer sur Maputo par défaut
     const map = L.map('map').setView([-25.9692, 32.5732], 13);
 
-    // Fond de carte version sombre (Dark Mode)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO'
     }).addTo(map);
 
-    // Charger les chauffeurs depuis Octopus2
     async function carregarMapa() {
         try {
             const response = await fetch('/api/listar');
@@ -50,14 +46,12 @@
             
             motoristas.forEach(moto => {
                 if (moto.latitude && moto.longitude) {
-                    // Création du marqueur
                     const marker = L.marker([moto.latitude, moto.longitude]).addTo(map);
                     
-                    // Design du pop-up au clic
                     const popupContent = `
                         <div class="popup-container">
                             <div class="popup-title">${moto.nom}</div>
-                            <div class="popup-meta"> veículo: <b>${moto.tipo.toUpperCase()}</b></div>
+                            <div class="popup-meta">Veículo: <b>${moto.tipo.toUpperCase()}</b></div>
                             <div class="popup-meta">🆔 Matrícula: <b>${moto.plaque}</b></div>
                             <a href="tel:${moto.telephone}" class="btn-call">📞 Chamar Motorista</a>
                         </div>
@@ -66,7 +60,7 @@
                 }
             });
         } catch (error) {
-            console.error("Erro ao conectar com Octopus2:", error);
+            console.error("Erro ao conectar com Haulzao-2:", error);
         }
     }
 
