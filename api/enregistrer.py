@@ -16,31 +16,40 @@ if firebase_config and not firebase_admin._apps:
         print(f"Erreur d'initialisation Firebase Haulzao-2 : {e}")
 
 class handler(BaseHTTPRequestHandler):
-    def do_GET(self):
+    def do_POST(self):
         try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            dados = json.loads(body.decode('utf-8'))
+
+            # Structure exacte de ta base Haulzao-2
+            novo_motorista = {
+                "tipo": dados.get("tipo"),
+                "nom": dados.get("nom"),
+                "telephone": dados.get("telephone"),
+                "plaque": dados.get("plaque"),
+                "latitude": dados.get("latitude", 0),
+                "longitude": dados.get("longitude", 0),
+                "status": "disponivel",
+                "registrado_em": firestore.SERVER_TIMESTAMP
+            }
+
             db = firestore.client()
-            
-            # On récupère uniquement les chauffeurs qui ont le statut "disponivel"
-            docs = db.collection("motoristas").where("status", "==", "disponivel").stream()
-            
-            lista_motoristas = []
-            for doc in docs:
-                data = doc.to_dict()
-                # On retire l'horodatage pour éviter les bugs de conversion JSON
-                if "registrado_em" in data:
-                    del data["registrado_em"]
-                lista_motoristas.append(data)
-            
-            # Réponse au client
+            # Ajout du chauffeur dans la collection "motoristas"
+            db.collection("motoristas").add(novo_motorista)
+
+            # Réponse de succès au téléphone
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             
-            self.wfile.write(json.dumps(lista_motoristas).encode('utf-8'))
-            
+            resposta = {"status": "sucesso", "message": "Motorista gravado com sucesso no Haulzao-2!"}
+            self.wfile.write(json.dumps(resposta).encode('utf-8'))
+
         except Exception as e:
+            # Si Firebase refuse la connexion, on renvoie la vraie erreur au téléphone
             self.send_response(500)
             self.send_header('Content-type', 'application/json')
             self.end_headers()
-            self.wfile.write(json.dumps({"error": str(e)}).encode('utf-8'))
-                    
+            self.wfile.write(json.dumps({"status": "erro", "message": f"Erro Haulzao-2: {str(e)}"}).encode('utf-8'))
+                                 
