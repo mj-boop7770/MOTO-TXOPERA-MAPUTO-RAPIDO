@@ -46,7 +46,7 @@
 
                 <div class="pt-2">
                     <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-black py-3.5 px-4 rounded-xl shadow-lg active:scale-[0.98] transition-all uppercase tracking-wider text-sm">
-                        🚀 ENREGISTRE DANS LE SYSTÈME
+                        🚀 Enregistrer dans le système
                     </button>
                 </div>
             </form>
@@ -73,8 +73,8 @@
                     };
 
                     try {
-                        // Ligne 58 : Route unifiée pointant vers ton fichier d'API Vercel
-                        const response = await fetch('/api/index', { 
+                        // Cible la route générée par enregistrer.py
+                        const response = await fetch('/api/enregistrer', { 
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(dados)
