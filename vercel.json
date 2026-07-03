@@ -1,12 +1,12 @@
 {
   "rewrites": [
     {
-      "source": "/api/index",
-      "destination": "/api/index.py"
+      "source": "/api/enregistrer",
+      "destination": "/api/enregistrer.py"
     },
     {
-      "source": "/api",
-      "destination": "/api/index.py"
+      "source": "/api/listar",
+      "destination": "/api/enregistrer.py"
     }
   ]
 }
