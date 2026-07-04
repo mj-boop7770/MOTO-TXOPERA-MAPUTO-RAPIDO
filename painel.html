@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Haulzao-2 - Painel de Controle</title>
-    <!-- Leaflet CSS para o Mapa -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -19,7 +18,7 @@
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <div>
                 <h1 class="text-2xl font-black text-amber-500 tracking-tight">PAINEL HAULZAO-2</h1>
-                <p class="text-xs text-slate-400 font-medium">Controle Geral de Motoristas & Txopelas</p>
+                <p class="text-xs text-slate-400 font-medium">Controle Geral de Motoristas & Txopelas (CEO View)</p>
             </div>
             <a href="clientes.html" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition">
                 ➔ Ver o Mapa do Cliente
@@ -29,7 +28,6 @@
 
     <main class="max-w-6xl mx-auto px-4 py-6">
         
-        <!-- Section Carte Générale de Contrôle -->
         <div class="mb-6 bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-xl">
             <h2 class="text-base font-bold text-slate-300 mb-3 flex items-center gap-2">
                 🗺️ Localização de Todos os Condutores Activos
@@ -37,28 +35,36 @@
             <div id="admin-map" class="shadow-inner"></div>
         </div>
 
-        <!-- Compteur rapide -->
-        <div class="mb-6 bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-center justify-between">
-            <span class="text-sm font-semibold text-slate-400">Total de condutores no sistema:</span>
-            <span id="total-count" class="text-2xl font-black text-amber-500">0</span>
+        <div class="mb-6 bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <span class="text-sm font-semibold text-slate-400">Total de condutores activos:</span>
+                <span id="total-count" class="text-2xl font-black text-amber-500">0</span>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                <button onclick="enviarSmsMassa()" class="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs py-2 px-4 rounded-lg shadow transition">
+                    💬 SMS em Massa
+                </button>
+                <button onclick="abrirGrupoWhatsapp()" class="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2 px-4 rounded-lg shadow transition">
+                    🟢 Broadcast WhatsApp
+                </button>
+            </div>
         </div>
 
-        <!-- Tableau des chauffeurs -->
         <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-xl">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-700/50 text-slate-300 text-xs font-bold uppercase tracking-wider border-b border-slate-700">
                             <th class="px-4 py-3">Tipo</th>
-                            <th class="px-4 py-3">Nome</th>
+                            <th class="px-4 py-3">Nome / Gestão</th>
                             <th class="px-4 py-3">Placa</th>
                             <th class="px-4 py-3">Contacto</th>
-                            <th class="px-4 py-3 text-right">Ação</th>
                         </tr>
                     </thead>
                     <tbody id="tabela-motoristas" class="divide-y divide-slate-700 text-sm">
                         <tr id="loading-row">
-                            <td colspan="5" class="px-4 py-8 text-center text-slate-400 italic">
+                            <td colspan="4" class="px-4 py-8 text-center text-slate-400 italic">
                                 A carregar lista de motoristas...
                             </td>
                         </tr>
@@ -68,13 +74,12 @@
         </div>
     </main>
 
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Initialiser la carte administrative sur Maputo
         const adminMap = L.map('admin-map').setView([-25.965, 32.583], 13);
+        let marqueursChauffeurs = {};
+        let listaContactosGlobais = [];
 
-        // Fond de carte clair et détaillé
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
@@ -90,19 +95,26 @@
                 
                 tbody.innerHTML = '';
                 totalCount.textContent = motoristas.length;
+                
+                // Nettoyer les anciens marqueurs s'il y en avait
+                Object.values(marqueursChauffeurs).forEach(m => adminMap.removeLayer(m));
+                marqueursChauffeurs = {};
+                listaContactosGlobais = [];
 
                 if (motoristas.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Nenhum motorista registado.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-slate-500">Nenhum motorista activo neste momento.</td></tr>`;
                     return;
                 }
 
+                const limitesCarte = L.featureGroup();
+
                 motoristas.forEach(m => {
-                    const emoji = m.tipo === "moto" ? "🏍️ Moto" : "🛺 Txopela";
+                    const emoji = m.tipo === "moto" ? "🏍️" : "🛺";
+                    if(m.telephone) listaContactosGlobais.push(m.telephone);
                     
-                    // 1. AJOUT DU MARQUEUR SUR LA CARTE DU PATRON
+                    // 1. AJOUT DU MARQUEUR SUR LA CARTE
                     if (m.latitude && m.longitude) {
                         const cor = m.tipo === "moto" ? "#f97316" : "#22c55e";
-                        const icone = m.tipo === "moto" ? "🏍️" : "🛺";
                         
                         const marker = L.circleMarker([m.latitude, m.longitude], {
                             radius: 10,
@@ -112,43 +124,98 @@
                             fillOpacity: 0.9
                         }).addTo(adminMap);
 
-                        // Popup de contrôle pour le boss
                         marker.bindPopup(`
                             <div class="p-1">
-                                <b class="text-white text-sm">${icone} ${m.nom.toUpperCase()}</b>
+                                <b class="text-white text-sm">${emoji} ${m.nom.toUpperCase()}</b>
                                 <p class="text-xs text-slate-400 mt-0.5">Placa: ${m.plaque}</p>
                                 <a href="tel:${m.telephone}" class="mt-2 block bg-emerald-600 text-white text-center text-xs font-bold py-1 px-2 rounded">
                                     📞 Ligar: ${m.telephone}
                                 </a>
                             </div>
                         `);
+                        
+                        marqueursChauffeurs[m.id_doc] = marker;
+                        limitesCarte.addLayer(marker);
                     }
 
-                    // 2. AJOUT DE LA LIGNE DANS LE TABLEAU
+                    // 2. RENDU DE LA LIGNE DANS LE TABLEAU (Action suppression et focus réunies)
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-slate-700/30 transition";
                     tr.innerHTML = `
-                        <td class="px-4 py-3.5 font-medium">${emoji}</td>
-                        <td class="px-4 py-3.5 font-bold text-white">${m.nom.toUpperCase()}</td>
+                        <td class="px-4 py-3.5 font-medium">${emoji} ${m.tipo === "moto" ? "Moto" : "Txopela"}</td>
+                        <td class="px-4 py-3.5 font-bold text-white flex items-center gap-3">
+                            <button onclick="deletarMotorista('${m.id_doc}')" class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white px-2 py-1 rounded text-xs font-black transition" title="Eliminar Motorista">
+                                ❌
+                            </button>
+                            <span onclick="focarNoMotorista('${m.id_doc}')" class="underline decoration-amber-500/50 hover:text-amber-400 cursor-pointer transition">
+                                ${m.nom.toUpperCase()}
+                            </span>
+                        </td>
                         <td class="px-4 py-3.5 font-mono"><span class="bg-slate-700 px-2 py-0.5 rounded text-xs">${m.plaque}</span></td>
                         <td class="px-4 py-3.5 text-slate-300">${m.telephone}</td>
-                        <td class="px-4 py-3.5 text-right">
-                            <a href="tel:${m.telephone}" class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-1.5 px-3 rounded-lg shadow-md transition">
-                                📞 Ligar
-                            </a>
-                        </td>
                     `;
                     tbody.appendChild(tr);
                 });
 
+                // AJUSTEMENT AUTOMATIQUE DU ZOOM POUR TOUT VOIR D'UN COUP D'ŒIL
+                if (motoristas.length > 0) {
+                    adminMap.fitBounds(limitesCarte.getBounds(), { padding: [40, 40] });
+                }
+
             } catch (err) {
                 console.error("Erro ao carregar o painel:", err);
-                document.getElementById('tabela-motoristas').innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-red-400">Erro ao ligar à base de dados.</td></tr>`;
+                document.getElementById('tabela-motoristas').innerHTML = `<tr><td colspan="4" class="px-4 py-8 text-center text-red-400">Erro ao ligar à base de dados.</td></tr>`;
             }
         }
 
-        // Lancement du chargement
+        function focarNoMotorista(idDoc) {
+            const marker = marqueursChauffeurs[idDoc];
+            if (marker) {
+                const coords = marker.getLatLng();
+                adminMap.setView(coords, 16, { animate: true });
+                marker.openPopup();
+            } else {
+                alert("Localização indisponível.");
+            }
+        }
+
+        async function deletarMotorista(idDoc) {
+            if (confirm("Tens a certeza que desejas remover este condutor do mapa?")) {
+                try {
+                    const response = await fetch('/api/enregistrer', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id_doc: idDoc })
+                    });
+                    
+                    const resultado = await response.json();
+                    if (response.ok && resultado.status === "deletado") {
+                        alert("Condutor removido com sucesso!");
+                        carregarPainel();
+                    } else {
+                        alert("Erro ao eliminar da base de dados.");
+                    }
+                } catch (error) {
+                    console.error("Erro:", error);
+                }
+            }
+        }
+
+        function enviarSmsMassa() {
+            if (listaContactosGlobais.length === 0) {
+                alert("Nenhum contacto disponível.");
+                return;
+            }
+            const linkSms = `sms:${listaContactosGlobais.join(',')};?body=Olá%20Equipa%20Haulzao-2!`;
+            window.location.href = linkSms;
+        }
+
+        function abrirGrupoWhatsapp() {
+            window.open(`https://wa.me/?text=Aviso%20Geral%20Haulzao-2:`, '_blank');
+        }
+
         carregarPainel();
     </script>
 </body>
-</html>
+    </html>
+    
