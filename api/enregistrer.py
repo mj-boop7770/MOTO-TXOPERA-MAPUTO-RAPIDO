@@ -4,7 +4,7 @@ import os
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# Initialisation sécurisée de Firebase à ta façon (via le JSON complet)
+# Initialisation sécurisée de Firebase via ta variable d'environnement globale
 firebase_config = os.environ.get("FIREBASE_CONFIG")
 
 if firebase_config and not firebase_admin._apps:
@@ -18,7 +18,7 @@ if firebase_config and not firebase_admin._apps:
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
-            # Récupération de la longueur des données reçues
+            # Récupération sécurisée du contenu JSON envoyé
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             data = json.loads(post_data.decode('utf-8'))
@@ -33,7 +33,7 @@ class handler(BaseHTTPRequestHandler):
             db = firestore.client()
 
             # ----------------------------------------------------
-            # ACTION 1 : SUPPRESSION DEPUIS LE PANNEAU CEO (❌)
+            # ACTION A : SUPPRESSION DEPUIS LE PANNEAU CEO (❌)
             # ----------------------------------------------------
             if data.get("action") == "delete":
                 id_doc = data.get("id_doc")
@@ -44,18 +44,23 @@ class handler(BaseHTTPRequestHandler):
                     self.wfile.write(json.dumps({"erreur": "ID do documento em falta"}).encode('utf-8'))
                     return
                 
-                # Suppression propre du document dans Firebase
+                # Suppression définitive dans la collection Firestore
                 db.collection("motoristas").document(str(id_doc)).delete()
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
+                # En-têtes anti-cache pour forcer Vercel à détruire la donnée immédiatement
+                self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                self.send_header('Pragma', 'no-cache')
+                self.send_header('Expires', '0')
                 self.end_headers()
+                
                 self.wfile.write(json.dumps({"status": "deletado", "message": "Condutor removido"}).encode('utf-8'))
                 return
 
             # ----------------------------------------------------
-            # ACTION 2 : ENREGISTREMENT DEPUIS LE FORMULAIRE MOTORISTA
+            # ACTION B : ENREGISTREMENT DEPUIS LE FORMULAIRE CHAUFFEUR
             # ----------------------------------------------------
             telephone = data.get("telephone")
             if not telephone:
@@ -65,7 +70,7 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"erreur": "Numero de telefone obrigatorio"}).encode('utf-8'))
                 return
 
-            # On prépare les données et on ajoute IMPORTANT l'état disponible exigé par ton GET !
+            # Préparation de l'objet avec inclusion du statut "disponivel" exigé par ton do_GET
             moto_data = {
                 "tipo": data.get("tipo", "moto"),
                 "nom": data.get("nom", "Anonimo"),
@@ -73,16 +78,20 @@ class handler(BaseHTTPRequestHandler):
                 "plaque": data.get("plaque", "Sem Placa"),
                 "latitude": float(data.get("latitude")),
                 "longitude": float(data.get("longitude")),
-                "status": "disponivel"  # Indispensable pour que ton code do_GET l'affiche sur la carte !
+                "status": "disponivel"
             }
 
-            # Enregistrement dans Firebase (avec le numéro de téléphone comme identifiant unique)
+            # Enregistrement unique (le numéro écrase l'ancienne position)
             db.collection("motoristas").document(str(telephone)).set(moto_data)
 
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
             self.end_headers()
+            
             self.wfile.write(json.dumps({"status": "sucesso", "message": "Posicao gravada"}).encode('utf-8'))
 
         except Exception as e:
@@ -90,3 +99,4 @@ class handler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({"erreur": str(e)}).encode('utf-8'))
+            
