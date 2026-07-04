@@ -35,6 +35,20 @@
             <div id="admin-map" class="shadow-inner"></div>
         </div>
 
+        <div class="mb-6 bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-xl">
+            <h3 class="text-sm font-bold text-slate-300 mb-2">🔍 Filtrar por Zona / Bairro (Raio de 3km)</h3>
+            <div class="flex gap-2">
+                <input type="text" id="address-input" placeholder="Ex: Muhalaze, Zimpeto, Maputo..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+                <button onclick="buscarPorEndereco()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold text-xs px-4 py-2 rounded-lg transition shadow">
+                    Buscar Zona
+                </button>
+                <button onclick="limparFiltroEndereco()" class="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-2 rounded-lg transition">
+                    Limpar
+                </button>
+            </div>
+            <p id="search-status" class="text-xs text-slate-400 mt-2 italic"></p>
+        </div>
+
         <div class="mb-6 bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-3">
                 <span class="text-sm font-semibold text-slate-400">Total de condutores activos:</span>
@@ -78,6 +92,8 @@
         const adminMap = L.map('admin-map').setView([-25.965, 32.583], 13);
         let marqueursChauffeurs = {};
         let listaContactosGlobais = [];
+        let listeChauffeursStockes = []; // Stockage temporaire pour filtrer localement au clavier
+        let cercleZoneId = null; // Pour dessiner la zone recherchée sur la carte
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
@@ -87,82 +103,160 @@
         async function carregarPainel() {
             try {
                 const response = await fetch('/api/listar?_t=' + Date.now());
-                const motoristas = await response.json();
-                
-                const tbody = document.getElementById('tabela-motoristas');
-                const totalCount = document.getElementById('total-count');
-                
-                tbody.innerHTML = '';
-                totalCount.textContent = motoristas.length;
-                
-                Object.values(marqueursChauffeurs).forEach(m => adminMap.removeLayer(m));
-                marqueursChauffeurs = {};
-                listaContactosGlobais = [];
-
-                if (motoristas.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-slate-500">Nenhum motorista activo neste momento.</td></tr>`;
-                    return;
-                }
-
-                const limitesCarte = L.featureGroup();
-
-                motoristas.forEach(m => {
-                    const emoji = m.tipo === "moto" ? "🏍️" : "🛺";
-                    if(m.telephone) listaContactosGlobais.push(m.telephone);
-                    
-                    // CORRECTION ICI : Si id_doc n'existe pas (vieux documents), on prend le telephone !
-                    const uniqueId = m.id_doc || m.telephone;
-
-                    if (m.latitude && m.longitude) {
-                        const col = m.tipo === "moto" ? "#ff6b00" : "#00cc44";
-                        
-                        const marker = L.circleMarker([m.latitude, m.longitude], {
-                            radius: 8,
-                            fillColor: col,
-                            color: "#ffffff",
-                            weight: 2,
-                            fillOpacity: 0.95
-                        }).addTo(adminMap);
-
-                        marker.bindPopup(`
-                            <div class="p-1">
-                                <b class="text-white text-sm">${emoji} ${m.nom.toUpperCase()}</b>
-                                <p class="text-xs text-slate-400 mt-0.5">Placa: ${m.plaque || 'Sem Placa'}</p>
-                                <a href="tel:${m.telephone}" class="mt-2 block bg-emerald-600 text-white text-center text-xs font-bold py-1 px-2 rounded">
-                                    📞 Ligar: ${m.telephone}
-                                </a>
-                            </div>
-                        `);
-                        
-                        marqueursChauffeurs[uniqueId] = marker;
-                        limitesCarte.addLayer(marker);
-                    }
-
-                    const tr = document.createElement('tr');
-                    tr.className = "hover:bg-slate-700/30 transition";
-                    tr.innerHTML = `
-                        <td class="px-4 py-3.5 font-medium">${emoji} ${m.tipo === "moto" ? "Moto" : "Txopela"}</td>
-                        <td class="px-4 py-3.5 font-bold text-white flex items-center gap-3">
-                            <button onclick="deletarMotorista('${uniqueId}')" class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white px-2 py-1 rounded text-xs font-black transition" title="Eliminar Motorista">
-                                ❌
-                            </button>
-                            <span onclick="focarNoMotorista('${uniqueId}')" class="underline decoration-amber-500/50 hover:text-amber-400 cursor-pointer transition">
-                                ${m.nom.toUpperCase()}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3.5 font-mono text-amber-500 font-bold text-base">${m.telephone}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-
-                if (motoristas.length > 0) {
-                    adminMap.fitBounds(limitesCarte.getBounds(), { padding: [40, 40] });
-                }
-
+                listeChauffeursStockes = await response.json();
+                renderTableau(listeChauffeursStockes);
             } catch (err) {
                 console.error("Erro ao carregar o painel:", err);
                 document.getElementById('tabela-motoristas').innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-red-400">Erro ao ligar à base de dados.</td></tr>`;
             }
+        }
+
+        function renderTableau(motoristas) {
+            const tbody = document.getElementById('tabela-motoristas');
+            const totalCount = document.getElementById('total-count');
+            
+            tbody.innerHTML = '';
+            totalCount.textContent = motoristas.length;
+            
+            Object.values(marqueursChauffeurs).forEach(m => adminMap.removeLayer(m));
+            marqueursChauffeurs = {};
+            listaContactosGlobais = [];
+
+            if (motoristas.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-slate-500">Nenhum motorista encontrado nesta zona.</td></tr>`;
+                return;
+            }
+
+            const limitesCarte = L.featureGroup();
+
+            motoristas.forEach(m => {
+                const emoji = m.tipo === "moto" ? "🏍️" : "🛺";
+                if(m.telephone) listaContactosGlobais.push(m.telephone);
+                
+                const uniqueId = m.id_doc || m.telephone;
+
+                if (m.latitude && m.longitude) {
+                    const col = m.tipo === "moto" ? "#ff6b00" : "#00cc44";
+                    
+                    const marker = L.circleMarker([m.latitude, m.longitude], {
+                        radius: 8,
+                        fillColor: col,
+                        color: "#ffffff",
+                        weight: 2,
+                        fillOpacity: 0.95
+                    }).addTo(adminMap);
+
+                    marker.bindPopup(`
+                        <div class="p-1">
+                            <b class="text-white text-sm">${emoji} ${m.nom.toUpperCase()}</b>
+                            <p class="text-xs text-slate-400 mt-0.5">Placa: ${m.plaque || 'Sem Placa'}</p>
+                            <a href="tel:${m.telephone}" class="mt-2 block bg-emerald-600 text-white text-center text-xs font-bold py-1 px-2 rounded">
+                                📞 Ligar: ${m.telephone}
+                            </a>
+                        </div>
+                    `);
+                    
+                    marqueursChauffeurs[uniqueId] = marker;
+                    limitesCarte.addLayer(marker);
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-700/30 transition";
+                tr.innerHTML = `
+                    <td class="px-4 py-3.5 font-medium">${emoji} ${m.tipo === "moto" ? "Moto" : "Txopela"}</td>
+                    <td class="px-4 py-3.5 font-bold text-white flex items-center gap-3">
+                        <button onclick="deletarMotorista('${uniqueId}')" class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white px-2 py-1 rounded text-xs font-black transition" title="Eliminar Motorista">
+                            ❌
+                        </button>
+                        <span onclick="focarNoMotorista('${uniqueId}')" class="underline decoration-amber-500/50 hover:text-amber-400 cursor-pointer transition">
+                            ${m.nom.toUpperCase()}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3.5 font-mono text-amber-500 font-bold text-base">${m.telephone}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            if (motoristas.length > 0) {
+                adminMap.fitBounds(limitesCarte.getBounds(), { padding: [40, 40] });
+            }
+        }
+
+        // RECHERCHE UNIQUE ET SUR DEMANDE PAR ADRESSE
+        async function buscarPorEndereco() {
+            const endereco = document.getElementById('address-input').value;
+            const statusText = document.getElementById('search-status');
+            
+            if (!endereco.trim()) {
+                alert("Por favor, digite um endereço ou bairro.");
+                return;
+            }
+
+            statusText.textContent = "A buscar coordenadas da zona...";
+
+            try {
+                // Requête unique vers l'API OpenStreetMap restreinte à la région de Maputo/Mozambique
+                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}+Maputo&limit=1`;
+                const response = await fetch(url);
+                const results = await response.json();
+
+                if (results.length === 0) {
+                    statusText.textContent = "Zona não encontrada. Tente escrever de outra forma.";
+                    return;
+                }
+
+                const targetLat = parseFloat(results[0].lat);
+                const targetLon = parseFloat(results[0].lon);
+
+                statusText.textContent = `Zona encontrada: ${results[0].display_name}. Filtrando condutores a menos de 3km...`;
+
+                // Supprimer l'ancien cercle s'il existe
+                if (cercleZoneId) adminMap.removeLayer(cercleZoneId);
+
+                // Dessiner la zone recherchée sur la carte (rayon 3000 mètres)
+                cercleZoneId = L.circle([targetLat, targetLon], {
+                    radius: 3000,
+                    color: '#f59e0b',
+                    fillColor: '#f59e0b',
+                    fillOpacity: 0.15
+                }).addTo(adminMap);
+
+                // Filtrer les chauffeurs localement selon la distance (Formule de Haversine)
+                const chauffeursFiltres = listeChauffeursStockes.filter(m => {
+                    if (!m.latitude || !m.longitude) return false;
+                    const dist = calcularDistancia(targetLat, targetLon, m.latitude, m.longitude);
+                    return dist <= 3.0; // 3 Kilomètres maximum
+                });
+
+                renderTableau(chauffeursFiltres);
+                adminMap.setView([targetLat, targetLon], 14);
+
+            } catch (error) {
+                console.error("Erro na busca de endereço:", error);
+                statusText.textContent = "Erro ao processar a busca da zona.";
+            }
+        }
+
+        function limparFiltroEndereco() {
+            document.getElementById('address-input').value = '';
+            document.getElementById('search-status').textContent = '';
+            if (cercleZoneId) {
+                adminMap.removeLayer(cercleZoneId);
+                cercleZoneId = null;
+            }
+            renderTableau(listeChauffeursStockes);
+        }
+
+        // Formule mathématique pour calculer la distance entre deux points GPS
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Rayon de la terre en km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
         }
 
         function focarNoMotorista(idDoc) {
@@ -218,5 +312,5 @@
         carregarPainel();
     </script>
 </body>
-            </html>
-                    
+                    </html>
+                
