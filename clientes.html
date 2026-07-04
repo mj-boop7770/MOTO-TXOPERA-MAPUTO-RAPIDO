@@ -24,7 +24,7 @@
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <div>
                 <h1 class="text-xl font-black tracking-tight">HAULZAO-2 MAPUTO</h1>
-                <p class="text-xs text-amber-100 font-medium">Motes & Txopelas em tempo real</p>
+                <p class="text-xs text-amber-100 font-medium">Mutos & Txopelas em tempo real</p>
             </div>
             <a href="index.html" class="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-lg transition">
                 Área Motorista ➔
@@ -33,7 +33,7 @@
     </header>
 
     <div class="bg-white border-b border-slate-200 px-4 py-2 text-sm shadow-sm flex flex-wrap justify-between items-center gap-2">
-        <span class="text-slate-600 font-medium">💡 Clique num marcador para ver a distância e ligar</span>
+        <span class="text-slate-600 font-medium">💡 Clique num marcador para ligar ao motorista</span>
         <div class="flex gap-4 text-xs font-semibold">
             <span class="flex items-center gap-1"><span class="w-3 h-3 bg-orange-500 rounded-full inline-block"></span> 🏍️ Moto</span>
             <span class="flex items-center gap-1"><span class="w-3 h-3 bg-green-500 rounded-full inline-block"></span> 🛺 Txopela</span>
@@ -70,7 +70,7 @@
         // FORMULE DE HAVERSINE POUR LE CALCUL DE DISTANCE REELLE
         function calcularDistance(lat1, lon1, lat2, lon2) {
             if (!lat1 || !lon1 || !lat2 || !lon2) return "Distância desconhecida";
-            const R = 6371; // Rayon de la Terre en km
+            const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = 
@@ -104,7 +104,6 @@
                             fillOpacity: 1
                         }).addTo(map).bindPopup("<b style='color:#ffffff;'>Tu estás aqui</b>");
                     }
-                    // Recharger les chauffeurs pour mettre à jour les calculs de distance
                     carregarMotoristas();
                 }, error => {
                     console.warn("GPS desativado pelo cliente.");
@@ -120,7 +119,6 @@
                 const response = await fetch('/api/listar');
                 const motoristas = await response.json();
 
-                // Nettoyer les marqueurs existants (sauf le point bleu) avant de redessiner
                 map.eachLayer(layer => {
                     if (layer instanceof L.CircleMarker && layer !== userMarker) {
                         map.removeLayer(layer);
@@ -132,7 +130,6 @@
                         const cor = m.tipo === "moto" ? "#f97316" : "#22c55e";
                         const iconeEmoji = m.tipo === "moto" ? "🏍️" : "🛺";
 
-                        // Calcul de la distance relative si le GPS client est actif
                         const textoDistancia = (clientLat && clientLng) 
                             ? calcularDistance(clientLat, clientLng, m.latitude, m.longitude)
                             : "Activa o teu GPS para ver a distância";
@@ -145,12 +142,13 @@
                             fillOpacity: 0.9
                         }).addTo(map);
 
+                        // Contenu de la bulle d'appel (comme ton code d'origine + la distance ajoutée)
                         const popupContent = `
-                            <div class="p-1 min-w-[180px]">
+                            <div class="p-1">
                                 <h3 class="text-base font-bold flex items-center gap-1">${iconeEmoji} ${m.nom.toUpperCase()}</h3>
                                 <p class="text-xs text-slate-300 mt-1">Placa: <span class="bg-slate-700 px-1.5 py-0.5 rounded font-mono text-white text-[11px]">${m.plaque}</span></p>
                                 <p class="text-xs text-amber-400 font-semibold mt-1.5 mb-2">📍 ${textoDistancia}</p>
-                                <a href="tel:${m.telephone}" class="block w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-xs py-2 px-3 rounded-lg shadow transition">
+                                <a href="tel:${m.telephone}" class="mt-3 block w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-sm py-2 px-3 rounded-lg shadow transition">
                                     📞 Chamar: ${m.telephone}
                                 </a>
                             </div>
@@ -163,23 +161,21 @@
             }
         }
 
-        // FONCTION APPEL RAPIDE AU CEO (Bouton d'urgence jaune)
+        // FONCTION APPEL RAPIDE AU CEO (Bouton d'urgence jaune connecté à ton vrai numéro)
         function pedirTransporteRapido() {
-            // METS TON NUMÉRO WHATSAPP DE AGENT/CEO ICI (Ex: 25884XXXXXXX)
-            const meuNumeroWhatsApp = "258845020131"; 
+            const meuNumeroWhatsApp = "258856113036"; // Ton numéro WhatsApp correct
             let mensagem = "Olá Haulzao-2! Estou à procura de um transporte urgente através do mapa.";
 
             if (clientLat && clientLng) {
-                mensagem += ` Aqui está a minha localização actual exacta: https://www.google.com/maps?q=${clientLat},${clientLng}`;
+                mensagem += ` Aqui está a minha localização actual exacta: https://www.google.com/search?q=https://www.google.com/maps%3Fq%3Dlatitude,longitude{clientLat},${clientLng}`;
                 const url = `https://wa.me/${meuNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`;
                 window.open(url, '_blank');
             } else {
-                // Si le GPS n'est pas prêt, on demande au téléphone de se géolocaliser d'abord en urgence
                 if ("geolocation" in navigator) {
                     navigator.geolocation.getCurrentPosition(position => {
                         const lat = position.coords.latitude;
                         const lng = position.coords.longitude;
-                        mensagem += ` Aqui está a minha localização actual exacta: https://www.google.com/maps?q=${lat},${lng}`;
+                        mensagem += ` Aqui está a minha localização actual exacta: https://www.google.com/search?q=https://www.google.com/maps%3Fq%3Dlatitude,longitude{lat},${lng}`;
                         window.open(`https://wa.me/${meuNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`, '_blank');
                     }, () => {
                         window.open(`https://wa.me/${meuNumeroWhatsApp}?text=${encodeURIComponent(mensagem + " (Não consegui partilhar o GPS automaticamente)")}`, '_blank');
@@ -190,9 +186,7 @@
             }
         }
 
-        // Chargement initial
-        setInterval(carregarMotoristas, 30000); // Rafraîchissement automatique toutes les 30 secondes
+        setInterval(carregarMotoristas, 30000);
     </script>
 </body>
-    </html>
-    
+</html>
