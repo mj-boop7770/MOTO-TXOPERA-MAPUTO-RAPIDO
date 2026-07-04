@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Haulzao-2 - Painel de Controle</title>
+    <title>MUJOS OCTOPUS - Painel</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -56,9 +56,9 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-700/50 text-slate-300 text-xs font-bold uppercase tracking-wider border-b border-slate-700">
-                            <th class="px-4 py-3">Tipo</th>
-                            <th class="px-4 py-3">Nome / Gestão</th>
-                            <th class="px-4 py-3">Contacto (Telemóvel)</th>
+                            <th class="px-4 py-3">Taper</th>
+                            <th class="px-4 py-3">Nom / Direction</th>
+                            <th class="px-4 py-3">Contact (Téléphone portable)</th>
                         </tr>
                     </thead>
                     <tbody id="tabela-motoristas" class="divide-y divide-slate-700 text-sm">
@@ -86,7 +86,8 @@
 
         async function carregarPainel() {
             try {
-                const response = await fetch('/api/listar');
+                // Requête GET avec paramètre de timestamp aléatoire pour court-circuiter le cache navigateur
+                const response = await fetch('/api/listar?_t=' + Date.now());
                 const motoristas = await response.json();
                 
                 const tbody = document.getElementById('tabela-motoristas');
@@ -110,8 +111,8 @@
                     const emoji = m.tipo === "moto" ? "🏍️" : "🛺";
                     if(m.telephone) listaContactosGlobais.push(m.telephone);
                     
-                    // On utilise le téléphone ou l'id de document Firebase
-                    const uniqueId = m.id_doc || m.telephone;
+                    // L'ID du document est basé sur le téléphone dans notre structure Firestore
+                    const uniqueId = m.telephone;
 
                     if (m.latitude && m.longitude) {
                         const cor = m.tipo === "moto" ? "#ff6b00" : "#00cc44";
@@ -127,7 +128,7 @@
                         marker.bindPopup(`
                             <div class="p-1">
                                 <b class="text-white text-sm">${emoji} ${m.nom.toUpperCase()}</b>
-                                <p class="text-xs text-slate-400 mt-0.5">Placa: ${m.plaque}</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Placa: ${m.plaque || 'Sem Placa'}</p>
                                 <a href="tel:${m.telephone}" class="mt-2 block bg-emerald-600 text-white text-center text-xs font-bold py-1 px-2 rounded">
                                     📞 Ligar: ${m.telephone}
                                 </a>
@@ -150,7 +151,7 @@
                                 ${m.nom.toUpperCase()}
                             </span>
                         </td>
-                        <td class="px-4 py-3.5 font-mono text-amber-500 font-bold">${m.telephone}</td>
+                        <td class="px-4 py-3.5 font-mono text-amber-500 font-bold text-base">${m.telephone}</td>
                     `;
                     tbody.appendChild(tr);
                 });
@@ -190,7 +191,8 @@
                     
                     if (response.ok) {
                         alert("Condutor removido com sucesso!");
-                        carregarPainel();
+                        // Forcer le rafraîchissement complet pour liquider le cache visuel
+                        window.location.reload(true);
                     } else {
                         const txt = await response.text();
                         alert("Erro ao eliminar: " + txt);
@@ -219,4 +221,4 @@
     </script>
 </body>
     </html>
-    
+        
