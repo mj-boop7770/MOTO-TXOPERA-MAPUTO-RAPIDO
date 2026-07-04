@@ -7,7 +7,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        #map { height: calc(100vh - 140px); width: 100%; }
+        /* La carte prend maintenant tout l'espace disponible proprement */
+        #map { height: calc(100vh - 110px); width: 100%; }
         /* Style personnalisé pour les popups */
         .leaflet-popup-content-wrapper {
             background: #1e293b;
@@ -24,11 +25,16 @@
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <div>
                 <h1 class="text-xl font-black tracking-tight">HAULZAO-2 MAPUTO</h1>
-                <p class="text-xs text-amber-100 font-medium">Mutos & Txopelas em tempo real</p>
+                <p class="text-xs text-amber-100 font-medium">Motos & Txopelas em tempo real</p>
             </div>
-            <a href="index.html" class="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-lg transition">
-                Área Motorista ➔
-            </a>
+            <div class="flex items-center gap-2">
+                <a href="https://wa.me/258856113036?text=Ol%C3%A1%20Haulzao-2%21%20Preciso%20de%20ajuda%20com%20um%20transporte." target="_blank" class="bg-emerald-650 hover:bg-emerald-700 bg-emerald-600 text-white text-xs font-black px-3 py-2 rounded-lg transition shadow flex items-center gap-1">
+                    💬 Suporte
+                </a>
+                <a href="index.html" class="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-lg transition">
+                    ➔
+                </a>
+            </div>
         </div>
     </header>
 
@@ -44,14 +50,8 @@
     <div class="relative">
         <div id="map"></div>
         
-        <button id="btn-location" class="absolute bottom-24 right-6 z-[1000] bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition">
+        <button id="btn-location" class="absolute bottom-6 right-6 z-[1000] bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition">
             📍 Minha Posição
-        </button>
-    </div>
-
-    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] w-11/12 max-w-md px-4">
-        <button onclick="pedirTransporteRapido()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-center py-4 px-6 rounded-2xl shadow-2xl flex items-center justify-center gap-3 text-sm md:text-base uppercase tracking-wider animate-bounce transition-all duration-300">
-            🛺 Pedir Transporte Rápido (WhatsApp)
         </button>
     </div>
 
@@ -67,7 +67,7 @@
             maxZoom: 19
         }).addTo(map);
 
-        // FORMULE DE HAVERSINE POUR LE CALCUL DE DISTANCE REELLE
+        // Formule Haversine pour calculer la distance réelle cachée sous le capot
         function calcularDistance(lat1, lon1, lat2, lon2) {
             if (!lat1 || !lon1 || !lat2 || !lon2) return "Distância desconhecida";
             const R = 6371;
@@ -142,7 +142,6 @@
                             fillOpacity: 0.9
                         }).addTo(map);
 
-                        // Contenu de la bulle d'appel (comme ton code d'origine + la distance ajoutée)
                         const popupContent = `
                             <div class="p-1">
                                 <h3 class="text-base font-bold flex items-center gap-1">${iconeEmoji} ${m.nom.toUpperCase()}</h3>
@@ -161,32 +160,8 @@
             }
         }
 
-        // FONCTION APPEL RAPIDE AU CEO (Bouton d'urgence jaune connecté à ton vrai numéro)
-        function pedirTransporteRapido() {
-            const meuNumeroWhatsApp = "258856113036"; // Ton numéro WhatsApp correct
-            let mensagem = "Olá Haulzao-2! Estou à procura de um transporte urgente através do mapa.";
-
-            if (clientLat && clientLng) {
-                mensagem += ` Aqui está a minha localização actual exacta: https://www.google.com/search?q=https://www.google.com/maps%3Fq%3Dlatitude,longitude{clientLat},${clientLng}`;
-                const url = `https://wa.me/${meuNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`;
-                window.open(url, '_blank');
-            } else {
-                if ("geolocation" in navigator) {
-                    navigator.geolocation.getCurrentPosition(position => {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        mensagem += ` Aqui está a minha localização actual exacta: https://www.google.com/search?q=https://www.google.com/maps%3Fq%3Dlatitude,longitude{lat},${lng}`;
-                        window.open(`https://wa.me/${meuNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`, '_blank');
-                    }, () => {
-                        window.open(`https://wa.me/${meuNumeroWhatsApp}?text=${encodeURIComponent(mensagem + " (Não consegui partilhar o GPS automaticamente)")}`, '_blank');
-                    });
-                } else {
-                    window.open(`https://wa.me/${meuNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`, '_blank');
-                }
-            }
-        }
-
         setInterval(carregarMotoristas, 30000);
     </script>
 </body>
-</html>
+        </html>
+        
