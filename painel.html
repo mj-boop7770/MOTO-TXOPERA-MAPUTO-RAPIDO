@@ -17,8 +17,8 @@
     <header class="bg-slate-800 border-b border-slate-700 px-4 py-4 shadow-lg sticky top-0 z-[1000]">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
             <div>
-                <h1 class="text-2xl font-black text-amber-500 tracking-tight">PAINEL HAULZAO-2</h1>
-                <p class="text-xs text-slate-400 font-medium">Controle Geral de Motoristas & Txopelas (CEO View)</p>
+                <h1 class="text-2xl font-black text-amber-500 tracking-tight">MUJOS OCTOPUS</h1>
+                <p class="text-xs text-slate-400 font-medium">Painel de Controle Geral • Haulzao-2 View</p>
             </div>
             <a href="clientes.html" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition">
                 ➔ Ver o Mapa do Cliente
@@ -96,7 +96,6 @@
                 tbody.innerHTML = '';
                 totalCount.textContent = motoristas.length;
                 
-                // Nettoyer les anciens marqueurs s'il y en avait
                 Object.values(marqueursChauffeurs).forEach(m => adminMap.removeLayer(m));
                 marqueursChauffeurs = {};
                 listaContactosGlobais = [];
@@ -112,16 +111,15 @@
                     const emoji = m.tipo === "moto" ? "🏍️" : "🛺";
                     if(m.telephone) listaContactosGlobais.push(m.telephone);
                     
-                    // 1. AJOUT DU MARQUEUR SUR LA CARTE
                     if (m.latitude && m.longitude) {
-                        const cor = m.tipo === "moto" ? "#f97316" : "#22c55e";
+                        const cor = m.tipo === "moto" ? "#ff6b00" : "#00cc44";
                         
                         const marker = L.circleMarker([m.latitude, m.longitude], {
-                            radius: 10,
+                            radius: 8,
                             fillColor: cor,
                             color: "#ffffff",
                             weight: 2,
-                            fillOpacity: 0.9
+                            fillOpacity: 0.95
                         }).addTo(adminMap);
 
                         marker.bindPopup(`
@@ -138,7 +136,6 @@
                         limitesCarte.addLayer(marker);
                     }
 
-                    // 2. RENDU DE LA LIGNE DANS LE TABLEAU (Action suppression et focus réunies)
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-slate-700/30 transition";
                     tr.innerHTML = `
@@ -157,7 +154,6 @@
                     tbody.appendChild(tr);
                 });
 
-                // AJUSTEMENT AUTOMATIQUE DU ZOOM POUR TOUT VOIR D'UN COUP D'ŒIL
                 if (motoristas.length > 0) {
                     adminMap.fitBounds(limitesCarte.getBounds(), { padding: [40, 40] });
                 }
@@ -203,7 +199,7 @@
 
         function enviarSmsMassa() {
             if (listaContactosGlobais.length === 0) {
-                alert("Nenhum contacto disponível.");
+                alert("Nenhum contacto disponible.");
                 return;
             }
             const linkSms = `sms:${listaContactosGlobais.join(',')};?body=Olá%20Equipa%20Haulzao-2!`;
@@ -211,11 +207,10 @@
         }
 
         function abrirGrupoWhatsapp() {
-            window.open(`https://wa.me/?text=Aviso%20Geral%20Haulzao-2:`, '_blank');
+            window.open(`https://wa.me/258856113036?text=Aviso%20Geral%20MUJOS%20OCTOPUS%3A`, '_blank');
         }
 
         carregarPainel();
     </script>
 </body>
-    </html>
-    
+</html>
