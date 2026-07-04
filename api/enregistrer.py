@@ -1,81 +1,92 @@
+from http.server import BaseHTTPRequestHandler
+import json
 import os
-from flask import Flask, request, jsonify
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-app = Flask(__name__)
+# Initialisation sécurisée de Firebase à ta façon (via le JSON complet)
+firebase_config = os.environ.get("FIREBASE_CONFIG")
 
-# INITIALISATION SÉCURISÉE DE FIREBASE (ANTI-BUG VERCEL)
-if not firebase_admin._apps:
+if firebase_config and not firebase_admin._apps:
     try:
-        # Récupération de la clé stockée dans Vercel
-        raw_key = os.environ.get("FIREBASE_PRIVATE_KEY", "")
-        
-        # Nettoyage strict de tous les types de guillemets parasites possibles
-        raw_key = raw_key.strip()
-        if raw_key.startswith('"') and raw_key.endswith('"'):
-            raw_key = raw_key[1:-1]
-        if raw_key.startswith("'") and raw_key.endswith("'"):
-            raw_key = raw_key[1:-1]
-            
-        # Remplacement universel des sauts de ligne corrompus
-        clean_key = raw_key.replace('\\n', '\n')
-
-        cred = credentials.Certificate({
-            "type": "service_account",
-            "project_id": os.environ.get("FIREBASE_PROJECT_ID"),
-            "private_key_id": os.environ.get("FIREBASE_PRIVATE_KEY_ID"),
-            "private_key": clean_key,
-            "client_email": os.environ.get("FIREBASE_CLIENT_EMAIL"),
-        })
+        cred_dict = json.loads(firebase_config)
+        cred = credentials.Certificate(cred_dict)
         firebase_admin.initialize_app(cred)
-    except Exception as init_err:
-        print(f"Erro ao inicializar Firebase: {str(init_err)}")
-
-# Initialisation du client Firestore globale
-try:
-    db = firestore.client()
-except Exception:
-    db = None
-
-@app.route('/api/enregistrer', methods=['POST'])
-def enregistrer_ou_supprimer():
-    if db is None:
-        return jsonify({"error": "Banco de dados Firebase nao configurado no servidor"}), 500
-        
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Nenhum dado recebido"}), 400
-
-        # ACTION 1 : SUPPRESSION DEPUIS LE PANNEAU CEO
-        if data.get("action") == "delete":
-            id_doc = data.get("id_doc")
-            if not id_doc:
-                return jsonify({"error": "ID do documento em falta"}), 400
-            
-            db.collection('motoristas').document(str(id_doc)).delete()
-            return jsonify({"status": "deletado", "message": "Condutor removido"}), 200
-
-        # ACTION 2 : ENREGISTREMENT CHAUFFEUR VIA FORMULAIRE
-        telephone = data.get("telephone")
-        if not telephone:
-            return jsonify({"error": "Numero de telefone obrigatorio"}), 400
-
-        moto_data = {
-            "tipo": data.get("tipo", "moto"),
-            "nom": data.get("nom", "Anonimo"),
-            "telephone": str(telephone),
-            "plaque": data.get("plaque", "Sem Placa"),
-            "latitude": float(data.get("latitude")),
-            "longitude": float(data.get("longitude")),
-            "timestamp": firestore.SERVER_TIMESTAMP
-        }
-
-        # Écrase ou crée l'enregistrement du chauffeur avec son numéro unique
-        db.collection('motoristas').document(str(telephone)).set(moto_data)
-        return jsonify({"status": "sucesso", "message": "Posicao gravada"}), 200
-
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-        
+        print(f"Erreur d'initialisation Firebase : {e}")
+
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        try:
+            # Récupération de la longueur des données reçues
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            data = json.loads(post_data.decode('utf-8'))
+
+            if not data:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"erreur": "Nenhum dado recebido"}).encode('utf-8'))
+                return
+
+            db = firestore.client()
+
+            # ----------------------------------------------------
+            # ACTION 1 : SUPPRESSION DEPUIS LE PANNEAU CEO (❌)
+            # ----------------------------------------------------
+            if data.get("action") == "delete":
+                id_doc = data.get("id_doc")
+                if not id_doc:
+                    self.send_response(400)
+                    self.send_header('Content-type', 'application/json')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"erreur": "ID do documento em falta"}).encode('utf-8'))
+                    return
+                
+                # Suppression propre du document dans Firebase
+                db.collection("motoristas").document(str(id_doc)).delete()
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "deletado", "message": "Condutor removido"}).encode('utf-8'))
+                return
+
+            # ----------------------------------------------------
+            # ACTION 2 : ENREGISTREMENT DEPUIS LE FORMULAIRE MOTORISTA
+            # ----------------------------------------------------
+            telephone = data.get("telephone")
+            if not telephone:
+                self.send_response(400)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({"erreur": "Numero de telefone obrigatorio"}).encode('utf-8'))
+                return
+
+            # On prépare les données et on ajoute IMPORTANT l'état disponible exigé par ton GET !
+            moto_data = {
+                "tipo": data.get("tipo", "moto"),
+                "nom": data.get("nom", "Anonimo"),
+                "telephone": str(telephone),
+                "plaque": data.get("plaque", "Sem Placa"),
+                "latitude": float(data.get("latitude")),
+                "longitude": float(data.get("longitude")),
+                "status": "disponivel"  # Indispensable pour que ton code do_GET l'affiche sur la carte !
+            }
+
+            # Enregistrement dans Firebase (avec le numéro de téléphone comme identifiant unique)
+            db.collection("motoristas").document(str(telephone)).set(moto_data)
+
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "sucesso", "message": "Posicao gravada"}).encode('utf-8'))
+
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"erreur": str(e)}).encode('utf-8'))
