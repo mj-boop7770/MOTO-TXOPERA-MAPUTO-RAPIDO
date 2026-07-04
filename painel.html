@@ -86,7 +86,6 @@
 
         async function carregarPainel() {
             try {
-                // Requête GET avec paramètre de timestamp aléatoire pour court-circuiter le cache navigateur
                 const response = await fetch('/api/listar?_t=' + Date.now());
                 const motoristas = await response.json();
                 
@@ -111,15 +110,15 @@
                     const emoji = m.tipo === "moto" ? "🏍️" : "🛺";
                     if(m.telephone) listaContactosGlobais.push(m.telephone);
                     
-                    // L'ID du document est basé sur le téléphone dans notre structure Firestore
-                    const uniqueId = m.telephone;
+                    // CORRECTION ICI : Si id_doc n'existe pas (vieux documents), on prend le telephone !
+                    const uniqueId = m.id_doc || m.telephone;
 
                     if (m.latitude && m.longitude) {
-                        const cor = m.tipo === "moto" ? "#ff6b00" : "#00cc44";
+                        const col = m.tipo === "moto" ? "#ff6b00" : "#00cc44";
                         
                         const marker = L.circleMarker([m.latitude, m.longitude], {
                             radius: 8,
-                            fillColor: cor,
+                            fillColor: col,
                             color: "#ffffff",
                             weight: 2,
                             fillOpacity: 0.95
@@ -191,7 +190,6 @@
                     
                     if (response.ok) {
                         alert("Condutor removido com sucesso!");
-                        // Forcer le rafraîchissement complet pour liquider le cache visuel
                         window.location.reload(true);
                     } else {
                         const txt = await response.text();
@@ -220,5 +218,5 @@
         carregarPainel();
     </script>
 </body>
-    </html>
-        
+            </html>
+                    
