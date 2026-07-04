@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Haulzao-2 - Encontre seu Transporte</title>
-    <!-- Leaflet CSS pour la carte -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Tailwind CSS pour un design pro -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #map { height: calc(100vh - 140px); width: 100%; }
@@ -22,12 +20,11 @@
 </head>
 <body class="bg-slate-100 font-sans antialiased text-slate-900">
 
-    <!-- En-tête de l'application Client -->
     <header class="bg-amber-500 text-white px-4 py-3 shadow-md sticky top-0 z-[1000]">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <div>
                 <h1 class="text-xl font-black tracking-tight">HAULZAO-2 MAPUTO</h1>
-                <p class="text-xs text-amber-100 font-medium">Motos & Txopelas em tempo real</p>
+                <p class="text-xs text-amber-100 font-medium">Motes & Txopelas em tempo real</p>
             </div>
             <a href="index.html" class="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-lg transition">
                 Área Motorista ➔
@@ -35,84 +32,111 @@
         </div>
     </header>
 
-    <!-- Barre d'instructions et Légende -->
     <div class="bg-white border-b border-slate-200 px-4 py-2 text-sm shadow-sm flex flex-wrap justify-between items-center gap-2">
-        <span class="text-slate-600 font-medium">💡 Clique num marcador para ligar ao motorista</span>
+        <span class="text-slate-600 font-medium">💡 Clique num marcador para ver a distância e ligar</span>
         <div class="flex gap-4 text-xs font-semibold">
-            <span class="flex items-center gap-1"><span class="w-3 height h-3 bg-orange-500 rounded-full inline-block"></span> 🏍️ Moto</span>
-            <span class="flex items-center gap-1"><span class="w-3 height h-3 bg-green-500 rounded-full inline-block"></span> 🛺 Txopela</span>
-            <span class="flex items-center gap-1"><span class="w-3 height h-3 bg-blue-500 rounded-full inline-block"></span> 🔵 Tu estás aqui</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-orange-500 rounded-full inline-block"></span> 🏍️ Moto</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-green-500 rounded-full inline-block"></span> 🛺 Txopela</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-blue-500 rounded-full inline-block"></span> 🔵 Tu estás aqui</span>
         </div>
-    }</div>
+    </div>
 
-    <!-- Zone de la Carte -->
     <div class="relative">
         <div id="map"></div>
         
-        <!-- Bouton Ma Position Flottant -->
-        <button id="btn-location" class="absolute bottom-6 right-6 z-[1000] bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition">
+        <button id="btn-location" class="absolute bottom-24 right-6 z-[1000] bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition">
             📍 Minha Posição
         </button>
     </div>
 
-    <!-- Leaflet JS -->
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] w-11/12 max-w-md px-4">
+        <button onclick="pedirTransporteRapido()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-center py-4 px-6 rounded-2xl shadow-2xl flex items-center justify-center gap-3 text-sm md:text-base uppercase tracking-wider animate-bounce transition-all duration-300">
+            🛺 Pedir Transporte Rápido (WhatsApp)
+        </button>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Initialisation de la carte centrée sur Maputo
         const map = L.map('map').setView([-25.965, 32.583], 14);
+        let userMarker = null;
+        let clientLat = null;
+        let clientLng = null;
 
-        // 🗺️ STYLE DE CARTE : Rues claires et ultra-précises (OpenStreetMap)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(map);
 
-        let userMarker = null;
+        // FORMULE DE HAVERSINE POUR LE CALCUL DE DISTANCE REELLE
+        function calcularDistance(lat1, lon1, lat2, lon2) {
+            if (!lat1 || !lon1 || !lat2 || !lon2) return "Distância desconhecida";
+            const R = 6371; // Rayon de la Terre en km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c; 
+            
+            if (distance < 1) {
+                return `A ${Math.round(distance * 1000)} metros de ti`;
+            }
+            return `A ${distance.toFixed(2)} km de ti`;
+        }
 
-        // Fonction pour géolocaliser le client
         function localizarCliente() {
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(position => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
+                    clientLat = position.coords.latitude;
+                    clientLng = position.coords.longitude;
 
-                    map.setView([lat, lng], 16); // Zoom serré pour la précision
+                    map.setView([clientLat, clientLng], 15);
 
                     if (userMarker) {
-                        userMarker.setLatLng([lat, lng]);
+                        userMarker.setLatLng([clientLat, clientLng]);
                     } else {
-                        // Point bleu pour le client
-                        userMarker = L.circleMarker([lat, lng], {
+                        userMarker = L.circleMarker([clientLat, clientLng], {
                             radius: 9,
                             fillColor: "#2563eb",
                             color: "#ffffff",
                             weight: 3,
                             fillOpacity: 1
-                        }).addTo(map).bindPopup("<b style='color:#ffffff;'>Tu estás aqui</b>").openPopup();
+                        }).addTo(map).bindPopup("<b style='color:#ffffff;'>Tu estás aqui</b>");
                     }
+                    // Recharger les chauffeurs pour mettre à jour les calculs de distance
+                    carregarMotoristas();
                 }, error => {
-                    alert("Erro ao obter localização. Ative o GPS do seu telefone.");
+                    console.warn("GPS desativado pelo cliente.");
                 }, { enableHighAccuracy: true });
             }
         }
 
-        // Géolocaliser automatiquement au démarrage et sur le clic du bouton
         localizarCliente();
         document.getElementById('btn-location').addEventListener('click', localizarCliente);
 
-        // 🔄 FONCTION POUR CHARGER LES CHAUFFEURS DEPUIS L'API
         async function carregarMotoristas() {
             try {
                 const response = await fetch('/api/listar');
                 const motoristas = await response.json();
 
+                // Nettoyer les marqueurs existants (sauf le point bleu) avant de redessiner
+                map.eachLayer(layer => {
+                    if (layer instanceof L.CircleMarker && layer !== userMarker) {
+                        map.removeLayer(layer);
+                    }
+                });
+
                 motoristas.forEach(m => {
                     if (m.latitude && m.longitude) {
-                        // Choisir la couleur du marqueur selon le type
                         const cor = m.tipo === "moto" ? "#f97316" : "#22c55e";
                         const iconeEmoji = m.tipo === "moto" ? "🏍️" : "🛺";
 
-                        // Création d'un marqueur personnalisé circulaire coloré
+                        // Calcul de la distance relative si le GPS client est actif
+                        const textoDistancia = (clientLat && clientLng) 
+                            ? calcularDistance(clientLat, clientLng, m.latitude, m.longitude)
+                            : "Activa o teu GPS para ver a distância";
+
                         const marker = L.circleMarker([m.latitude, m.longitude], {
                             radius: 12,
                             fillColor: cor,
@@ -121,12 +145,12 @@
                             fillOpacity: 0.9
                         }).addTo(map);
 
-                        // Contenu de la bulle d'appel
                         const popupContent = `
-                            <div class="p-1">
+                            <div class="p-1 min-w-[180px]">
                                 <h3 class="text-base font-bold flex items-center gap-1">${iconeEmoji} ${m.nom.toUpperCase()}</h3>
-                                <p class="text-xs text-slate-300 mt-1">Placa: <span class="bg-slate-700 px-1.5 py-0.5 rounded font-mono text-white">${m.plaque}</span></p>
-                                <a href="tel:${m.telephone}" class="mt-3 block w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-sm py-2 px-3 rounded-lg shadow transition">
+                                <p class="text-xs text-slate-300 mt-1">Placa: <span class="bg-slate-700 px-1.5 py-0.5 rounded font-mono text-white text-[11px]">${m.plaque}</span></p>
+                                <p class="text-xs text-amber-400 font-semibold mt-1.5 mb-2">📍 ${textoDistancia}</p>
+                                <a href="tel:${m.telephone}" class="block w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-xs py-2 px-3 rounded-lg shadow transition">
                                     📞 Chamar: ${m.telephone}
                                 </a>
                             </div>
@@ -139,9 +163,36 @@
             }
         }
 
-        // Charger les marqueurs dès que la page s'ouvre
-        carregarMotoristas();
+        // FONCTION APPEL RAPIDE AU CEO (Bouton d'urgence jaune)
+        function pedirTransporteRapido() {
+            // METS TON NUMÉRO WHATSAPP DE AGENT/CEO ICI (Ex: 25884XXXXXXX)
+            const meuNumeroWhatsApp = "258845020131"; 
+            let mensagem = "Olá Haulzao-2! Estou à procura de um transporte urgente através do mapa.";
+
+            if (clientLat && clientLng) {
+                mensagem += ` Aqui está a minha localização actual exacta: https://www.google.com/maps?q=${clientLat},${clientLng}`;
+                const url = `https://wa.me/${meuNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`;
+                window.open(url, '_blank');
+            } else {
+                // Si le GPS n'est pas prêt, on demande au téléphone de se géolocaliser d'abord en urgence
+                if ("geolocation" in navigator) {
+                    navigator.geolocation.getCurrentPosition(position => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        mensagem += ` Aqui está a minha localização actual exacta: https://www.google.com/maps?q=${lat},${lng}`;
+                        window.open(`https://wa.me/${meuNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`, '_blank');
+                    }, () => {
+                        window.open(`https://wa.me/${meuNumeroWhatsApp}?text=${encodeURIComponent(mensagem + " (Não consegui partilhar o GPS automaticamente)")}`, '_blank');
+                    });
+                } else {
+                    window.open(`https://wa.me/${meuNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`, '_blank');
+                }
+            }
+        }
+
+        // Chargement initial
+        setInterval(carregarMotoristas, 30000); // Rafraîchissement automatique toutes les 30 secondes
     </script>
 </body>
-         </html>
+    </html>
     
