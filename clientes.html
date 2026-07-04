@@ -7,14 +7,14 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        #map { height: 450px; width: 100%; border-radius: 16px; }
+        #map { height: 500px; width: 100%; border-radius: 16px; }
         .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; }
         .leaflet-popup-tip { background: #1e293b; }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 font-sans antialiased">
 
-    <!-- HEADER & ACTION PRINCIPALE -->
+    <!-- HEADER AVEC LE BOUTON VISIBLE -->
     <header class="bg-slate-800 border-b border-slate-700 px-4 py-5 shadow-xl sticky top-0 z-[1000]">
         <div class="max-w-xl mx-auto flex flex-col gap-4">
             <div class="flex justify-between items-center">
@@ -27,47 +27,19 @@
                 </span>
             </div>
 
-            <!-- BOUTON D'ACTION PRINCIPAL TRÈS VISIBLE -->
-            <button onclick="toggleFormulario()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 text-base font-black py-3 px-4 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+            <!-- BOUTON D'ACTION PRINCIPAL -->
+            <button onclick="solicitarTransporteImediato()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 text-base font-black py-3.5 px-4 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2 tracking-wide">
                 🚖 PROCURAR TRANSPORTE
             </button>
         </div>
     </header>
 
-    <main class="max-w-xl mx-auto px-4 py-6 space-y-6">
-
-        <!-- FORMULAIRE AUTOMATIQUE DE COLLECTE D'INFORMATIONS (CACHÉ PAR DÉFAUT) -->
-        <div id="form-solicitacao" class="hidden bg-slate-800 border border-amber-500/40 p-5 rounded-2xl shadow-2xl space-y-4 transition-all">
-            <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-                <h2 class="text-sm font-bold text-amber-500 uppercase tracking-wider">📋 Detalhes da sua Viagem</h2>
-                <button onclick="toggleFormulario()" class="text-slate-400 hover:text-white text-xs">Fechar ✕</button>
-            </div>
-            
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Seu Número de Contacto:</label>
-                    <input type="text" id="cli-phone" placeholder="Ex: 841234567" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-bold">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Onde se encontra agora? (Endereço/Bairro):</label>
-                    <input type="text" id="cli-origem" placeholder="Ex: Mercado de Zimpeto, junto à paragem" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Para onde vai exatamente? (Destino):</label>
-                    <input type="text" id="cli-destino" placeholder="Ex: Praça dos Combatentes, Maputo" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
-                </div>
-            </div>
-
-            <button onclick="enviarSolicitacaoAutomatica()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm py-2.5 rounded-lg shadow transition">
-                🟢 Enviar Pedido via WhatsApp
-            </button>
-        </div>
-
-        <!-- CARTE DES CHAUFFEURS -->
+    <main class="max-w-xl mx-auto px-4 py-6">
+        <!-- MAPA -->
         <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl shadow-xl">
             <div id="map" class="shadow-inner"></div>
             <p class="text-[11px] text-slate-400 text-center mt-2.5 italic">
-                Os marcadores indicam a última posição conhecida dos condutores ativos.
+                Os marcadores indicam a posição dos condutores livres mais próximos de si.
             </p>
         </div>
     </main>
@@ -126,40 +98,24 @@
             }
         }
 
-        // FONCTION DE COMMUTATION DU FORMULAIRE
-        function toggleFormulario() {
-            const form = document.getElementById('form-solicitacao');
-            form.classList.toggle('hidden');
-        }
-
-        // COLLECTE AUTOMATIQUE ET ENVOI SUR TON WHATSAPP
-        function enviarSolicitacaoAutomatica() {
-            const telefone = document.getElementById('cli-phone').value.trim();
-            const origem = document.getElementById('cli-origem').value.trim();
-            const destino = document.getElementById('cli-destino').value.trim();
-
-            if (!telefone || !origem || !destino) {
-                alert("Por favor, preencha todos os campos para solicitar o transporte.");
-                return;
-            }
-
-            // Construction du message structuré
-            const mensagemFormatada = `🚨 *NOVO PEDIDO DE TRANSPORTE - MUJOS OCTOPUS*\n\n` +
-                                     `📱 *Contacto do Cliente:* ${telefone}\n` +
-                                     `📍 *Onde está:* ${origem}\n` +
-                                     `🏁 *Para onde vai:* ${destino}`;
-
-            // Remplace par ton numéro WhatsApp commercial Mujos Octopus (avec l'identifiant pays 258)
-            const tonNumeroWhatsApp = "258856113036"; 
+        // FONCTION WHATSAPP PRÉ-ÉCRITE
+        function solicitarTransporteImediato() {
+            const tonNumeroWhatsApp = "258856113036";
             
-            const urlWhatsapp = `https://wa.me/${tonNumeroWhatsApp}?text=${encodeURIComponent(mensagemFormatada)}`;
-            window.open(urlWhatsapp, '_blank');
+            const mensagem = 
+                "Olá! Preciso de um transporte, por favor.\n\n" +
+                "Aqui estão as minhas informações:\n" +
+                "📍 Onde estou: (Escreva o seu endereço ou ponto de referência)\n" +
+                "🏁 Para onde vou: (Escreva o seu destino)\n" +
+                "📱 Meu número de telefone: (Escreva o seu contacto)\n\n" +
+                "Aguardo o vosso contacto. Obrigado!";
+
+            window.open(`https://wa.me/${tonNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`, '_blank');
         }
 
-        // Rafraîchissement automatique toutes les 30 secondes
         carregarMarcadores();
         setInterval(carregarMarcadores, 30000);
     </script>
 </body>
-    </html>
-                    
+                </html>
+                
