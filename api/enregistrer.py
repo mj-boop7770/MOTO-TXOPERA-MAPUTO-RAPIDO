@@ -20,7 +20,8 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        # AJOUT DE DELETE ICI
+        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
 
@@ -47,7 +48,6 @@ class handler(BaseHTTPRequestHandler):
             }
 
             db = firestore.client()
-            # Utiliser le téléphone comme ID document évite les doublons d'un même chauffeur
             db.collection("motoristas").document(str(telephone)).set(novo_motorista, merge=True)
 
             self.send_response(200)
@@ -69,11 +69,8 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             db = firestore.client()
-            
-            # Calcul du seuil de 2 heures en arrière (en UTC pour s'aligner sur Firebase)
             limite_temps = datetime.now(timezone.utc) - timedelta(hours=2)
             
-            # On filtre : statut disponible ET enregistré depuis moins de 2 heures
             docs = db.collection("motoristas")\
                      .where("status", "==", "disponivel")\
                      .where("registrado_em", ">=", limite_temps)\
@@ -83,6 +80,7 @@ class handler(BaseHTTPRequestHandler):
             for doc in docs:
                 m = doc.to_dict()
                 lista_motoristas.append({
+                    "id_doc": doc.id,  # TRÈS IMPORTANT : On envoie l'ID pour que le tableau de bord puisse le supprimer
                     "tipo": m.get("tipo"),
                     "nom": m.get("nom"),
                     "telephone": m.get("telephone"),
@@ -103,4 +101,33 @@ class handler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({"erreur": str(e)}).encode('utf-8'))
+
+    # 3. SUPPRESSION ACTIVED PAR LE TABLEAU DE BORD (DELETE)
+    def do_DELETE(self):
+        try:
+            content_length = int(self.headers['Content-Length'])
+            body = self.rfile.read(content_length)
+            dados = json.loads(body.decode('utf-8'))
+            id_doc = dados.get("id_doc")
+
+            if not id_doc:
+                raise ValueError("ID do documento em falta.")
+
+            db = firestore.client()
+            # On supprime le document directement sur Firebase
+            db.collection("motoristas").document(str(id_doc)).delete()
+
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            self.wfile.write(json.dumps({"status": "deletado", "message": "Motorista removido."}).encode('utf-8'))
+
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({"status": "erro", "message": str(e)}).encode('utf-8'))
         
