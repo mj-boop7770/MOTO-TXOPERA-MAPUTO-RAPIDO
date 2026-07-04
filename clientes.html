@@ -3,163 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MUJOS OCTOPUS - Solicitar Transporte</title>
+    <title>Haulzao-2 - Encontre seu Transporte</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        #map { height: 450px; width: 100%; border-radius: 16px; }
-        .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; }
+        /* La carte prend maintenant tout l'espace disponible proprement */
+        #map { height: calc(100vh - 110px); width: 100%; }
+        /* Style personnalisé pour les popups */
+        .leaflet-popup-content-wrapper {
+            background: #1e293b;
+            color: white;
+            border-radius: 12px;
+            padding: 4px;
+        }
         .leaflet-popup-tip { background: #1e293b; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans antialiased">
+<body class="bg-slate-100 font-sans antialiased text-slate-900">
 
-    <!-- HEADER & ACTION PRINCIPALE -->
-    <header class="bg-slate-800 border-b border-slate-700 px-4 py-5 shadow-xl sticky top-0 z-[1000]">
-        <div class="max-w-xl mx-auto flex flex-col gap-4">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-2xl font-black text-amber-500 tracking-tight">MUJOS OCTOPUS</h1>
-                    <p class="text-xs text-slate-400 font-medium">Mapa de Condutores Disponíveis</p>
-                </div>
-                <span class="bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider animate-pulse">
-                    ● Em Tempo Real
-                </span>
+    <header class="bg-amber-500 text-white px-4 py-3 shadow-md sticky top-0 z-[1000]">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-black tracking-tight">HAULZAO-2 MAPUTO</h1>
+                <p class="text-xs text-amber-100 font-medium">Motos & Txopelas em tempo real</p>
             </div>
-
-            <!-- BOUTON D'ACTION PRINCIPAL TRÈS VISIBLE -->
-            <button onclick="toggleFormulario()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 text-base font-black py-3 px-4 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
-                🚖 PROCURAR TRANSPORTE
-            </button>
+            <div class="flex items-center gap-2">
+                <a href="https://wa.me/258856113036?text=Ol%C3%A1%20Haulzao-2%21%20Preciso%20de%20ajuda%20com%20um%20transporte." target="_blank" class="bg-emerald-650 hover:bg-emerald-700 bg-emerald-600 text-white text-xs font-black px-3 py-2 rounded-lg transition shadow flex items-center gap-1">
+                    💬 Suporte
+                </a>
+                <a href="index.html" class="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-3 py-2 rounded-lg transition">
+                    ➔
+                </a>
+            </div>
         </div>
     </header>
 
-    <main class="max-w-xl mx-auto px-4 py-6 space-y-6">
-
-        <!-- FORMULAIRE AUTOMATIQUE DE COLLECTE D'INFORMATIONS (CACHÉ PAR DÉFAUT) -->
-        <div id="form-solicitacao" class="hidden bg-slate-800 border border-amber-500/40 p-5 rounded-2xl shadow-2xl space-y-4 transition-all">
-            <div class="flex justify-between items-center border-b border-slate-700 pb-2">
-                <h2 class="text-sm font-bold text-amber-500 uppercase tracking-wider">📋 Detalhes da sua Viagem</h2>
-                <button onclick="toggleFormulario()" class="text-slate-400 hover:text-white text-xs">Fechar ✕</button>
-            </div>
-            
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Seu Número de Contacto:</label>
-                    <input type="text" id="cli-phone" placeholder="Ex: 841234567" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-bold">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Onde se encontra agora? (Endereço/Bairro):</label>
-                    <input type="text" id="cli-origem" placeholder="Ex: Mercado de Zimpeto, junto à paragem" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-400 mb-1">Para onde vai exatamente? (Destino):</label>
-                    <input type="text" id="cli-destino" placeholder="Ex: Praça dos Combatentes, Maputo" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
-                </div>
-            </div>
-
-            <button onclick="enviarSolicitacaoAutomatica()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm py-2.5 rounded-lg shadow transition">
-                🟢 Enviar Pedido via WhatsApp
-            </button>
+    <div class="bg-white border-b border-slate-200 px-4 py-2 text-sm shadow-sm flex flex-wrap justify-between items-center gap-2">
+        <span class="text-slate-600 font-medium">💡 Clique num marcador para ligar ao motorista</span>
+        <div class="flex gap-4 text-xs font-semibold">
+            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-orange-500 rounded-full inline-block"></span> 🏍️ Moto</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-green-500 rounded-full inline-block"></span> 🛺 Txopela</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-blue-500 rounded-full inline-block"></span> 🔵 Tu estás aqui</span>
         </div>
+    </div>
 
-        <!-- CARTE DES CHAUFFEURS -->
-        <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl shadow-xl">
-            <div id="map" class="shadow-inner"></div>
-            <p class="text-[11px] text-slate-400 text-center mt-2.5 italic">
-                Os marcadores indicam a última posição conhecida dos condutores ativos.
-            </p>
-        </div>
-    </main>
+    <div class="relative">
+        <div id="map"></div>
+        
+        <button id="btn-location" class="absolute bottom-6 right-6 z-[1000] bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition">
+            📍 Minha Posição
+        </button>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const map = L.map('map').setView([-25.965, 32.583], 13);
-        let marqueursChauffeurs = {};
+        const map = L.map('map').setView([-25.965, 32.583], 14);
+        let userMarker = null;
+        let clientLat = null;
+        let clientLng = null;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(map);
 
-        async function carregarMarcadores() {
-            try {
-                const response = await fetch('/api/listar?_t=' + Date.now());
-                const motoristas = await response.json();
-                
-                Object.values(marqueursChauffeurs).forEach(m => map.removeLayer(m));
-                marqueursChauffeurs = {};
+        // Formule Haversine pour calculer la distance réelle cachée sous le capot
+        function calcularDistance(lat1, lon1, lat2, lon2) {
+            if (!lat1 || !lon1 || !lat2 || !lon2) return "Distância desconhecida";
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c; 
+            
+            if (distance < 1) {
+                return `A ${Math.round(distance * 1000)} metros de ti`;
+            }
+            return `A ${distance.toFixed(2)} km de ti`;
+        }
 
-                if (motoristas.length === 0) return;
+        function localizarCliente() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    clientLat = position.coords.latitude;
+                    clientLng = position.coords.longitude;
 
-                const limitesCarte = L.featureGroup();
+                    map.setView([clientLat, clientLng], 15);
 
-                motoristas.forEach(m => {
-                    if (m.latitude && m.longitude) {
-                        const emoji = m.tipo === "moto" ? "🏍️" : "🛺";
-                        const col = m.tipo === "moto" ? "#ff6b00" : "#00cc44";
-
-                        const marker = L.circleMarker([m.latitude, m.longitude], {
-                            radius: 8,
-                            fillColor: col,
+                    if (userMarker) {
+                        userMarker.setLatLng([clientLat, clientLng]);
+                    } else {
+                        userMarker = L.circleMarker([clientLat, clientLng], {
+                            radius: 9,
+                            fillColor: "#2563eb",
                             color: "#ffffff",
-                            weight: 2,
-                            fillOpacity: 0.95
-                        }).addTo(map);
+                            weight: 3,
+                            fillOpacity: 1
+                        }).addTo(map).bindPopup("<b style='color:#ffffff;'>Tu estás aqui</b>");
+                    }
+                    carregarMotoristas();
+                }, error => {
+                    console.warn("GPS desativado pelo cliente.");
+                }, { enableHighAccuracy: true });
+            }
+        }
 
-                        marker.bindPopup(`
-                            <div class="p-0.5 text-center">
-                                <b class="text-white text-xs">${emoji} DISPONÍVEL</b>
-                            </div>
-                        `);
+        localizarCliente();
+        document.getElementById('btn-location').addEventListener('click', localizarCliente);
 
-                        marqueursChauffeurs[m.id_doc || m.telephone] = marker;
-                        limitesCarte.addLayer(marker);
+        async function carregarMotoristas() {
+            try {
+                const response = await fetch('/api/listar');
+                const motoristas = await response.json();
+
+                map.eachLayer(layer => {
+                    if (layer instanceof L.CircleMarker && layer !== userMarker) {
+                        map.removeLayer(layer);
                     }
                 });
 
-                if (motoristas.length > 0) {
-                    map.fitBounds(limitesCarte.getBounds(), { padding: [30, 30] });
-                }
+                motoristas.forEach(m => {
+                    if (m.latitude && m.longitude) {
+                        const cor = m.tipo === "moto" ? "#f97316" : "#22c55e";
+                        const iconeEmoji = m.tipo === "moto" ? "🏍️" : "🛺";
+
+                        const textoDistancia = (clientLat && clientLng) 
+                            ? calcularDistance(clientLat, clientLng, m.latitude, m.longitude)
+                            : "Activa o teu GPS para ver a distância";
+
+                        const marker = L.circleMarker([m.latitude, m.longitude], {
+                            radius: 12,
+                            fillColor: cor,
+                            color: "#ffffff",
+                            weight: 2,
+                            fillOpacity: 0.9
+                        }).addTo(map);
+
+                        const popupContent = `
+                            <div class="p-1">
+                                <h3 class="text-base font-bold flex items-center gap-1">${iconeEmoji} ${m.nom.toUpperCase()}</h3>
+                                <p class="text-xs text-slate-300 mt-1">Placa: <span class="bg-slate-700 px-1.5 py-0.5 rounded font-mono text-white text-[11px]">${m.plaque}</span></p>
+                                <p class="text-xs text-amber-400 font-semibold mt-1.5 mb-2">📍 ${textoDistancia}</p>
+                                <a href="tel:${m.telephone}" class="mt-3 block w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-sm py-2 px-3 rounded-lg shadow transition">
+                                    📞 Chamar: ${m.telephone}
+                                </a>
+                            </div>
+                        `;
+                        marker.bindPopup(popupContent);
+                    }
+                });
             } catch (err) {
-                console.error("Erro ao carregar mapa do cliente:", err);
+                console.error("Erro ao carregar dados do Haulzao-2:", err);
             }
         }
 
-        // FONCTION DE COMMUTATION DU FORMULAIRE
-        function toggleFormulario() {
-            const form = document.getElementById('form-solicitacao');
-            form.classList.toggle('hidden');
-        }
-
-        // COLLECTE AUTOMATIQUE ET ENVOI SUR TON WHATSAPP
-        function enviarSolicitacaoAutomatica() {
-            const telefone = document.getElementById('cli-phone').value.trim();
-            const origem = document.getElementById('cli-origem').value.trim();
-            const destino = document.getElementById('cli-destino').value.trim();
-
-            if (!telefone || !origem || !destino) {
-                alert("Por favor, preencha todos os campos para solicitar o transporte.");
-                return;
-            }
-
-            // Construction du message structuré
-            const mensagemFormatada = `🚨 *NOVO PEDIDO DE TRANSPORTE - MUJOS OCTOPUS*\n\n` +
-                                     `📱 *Contacto do Cliente:* ${telefone}\n` +
-                                     `📍 *Onde está:* ${origem}\n` +
-                                     `🏁 *Para onde vai:* ${destino}`;
-
-            // Remplace par ton numéro WhatsApp commercial Mujos Octopus (avec l'identifiant pays 258)
-            const tonNumeroWhatsApp = "258856113036"; 
-            
-            const urlWhatsapp = `https://wa.me/${tonNumeroWhatsApp}?text=${encodeURIComponent(mensagemFormatada)}`;
-            window.open(urlWhatsapp, '_blank');
-        }
-
-        // Rafraîchissement automatique toutes les 30 secondes
-        carregarMarcadores();
-        setInterval(carregarMarcadores, 30000);
+        setInterval(carregarMotoristas, 30000);
     </script>
 </body>
-    </html>
-                    
+        </html>
+        
