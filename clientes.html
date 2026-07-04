@@ -39,7 +39,7 @@
         <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl shadow-xl">
             <div id="map" class="shadow-inner"></div>
             <p class="text-[11px] text-slate-400 text-center mt-2.5 italic">
-                Os marcadores indicam a posição dos condutores livres mais próximos de si.
+                Os marcadores indicam a posição dos condutores livres mais próximos de si. Clique num marcador para ver os detalhes.
             </p>
         </div>
     </main>
@@ -48,11 +48,47 @@
     <script>
         const map = L.map('map').setView([-25.965, 32.583], 13);
         let marqueursChauffeurs = {};
+        let userLat = null;
+        let userLon = null;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(map);
+
+        // Géolocalisation du client pour calculer la distance
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                userLat = position.coords.latitude;
+                userLon = position.coords.longitude;
+                
+                // Petit marqueur bleu pour le client
+                L.circleMarker([userLat, userLon], {
+                    radius: 6,
+                    fillColor: "#3b82f6",
+                    color: "#ffffff",
+                    weight: 2,
+                    fillOpacity: 1
+                }).addTo(map).bindPopup("<b class='text-white text-xs'>Sua Posição</b>");
+                
+                carregarMarcadores();
+            }, () => {
+                carregarMarcadores();
+            });
+        } else {
+            carregarMarcadores();
+        }
+
+        function calcularDistancia(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Rayon de la Terre en km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return (R * c).toFixed(2);
+        }
 
         async function carregarMarcadores() {
             try {
@@ -79,9 +115,19 @@
                             fillOpacity: 0.95
                         }).addTo(map);
 
+                        // Calcul de la distance si la position client est dispo
+                        let textoDistancia = "Distância: -- km";
+                        if (userLat && userLon) {
+                            const d = calcularDistancia(userLat, userLon, m.latitude, m.longitude);
+                            textoDistancia = `A cerca de <b>${d} km</b> de si`;
+                        }
+
+                        // Le super popup complet qui donne confiance (Nom, Plaque, Distance)
                         marker.bindPopup(`
-                            <div class="p-0.5 text-center">
-                                <b class="text-white text-xs">${emoji} DISPONÍVEL</b>
+                            <div class="p-1 line-clamp-3">
+                                <b class="text-white text-sm uppercase">${emoji} ${m.nom || 'Condutor'}</b>
+                                <p class="text-xs text-slate-400 mt-0.5">Placa: ${m.plaque || 'Sem Placa'}</p>
+                                <p class="text-xs text-amber-500 font-semibold mt-1 border-t border-slate-700 pt-1">${textoDistancia}</p>
                             </div>
                         `);
 
@@ -91,7 +137,7 @@
                 });
 
                 if (motoristas.length > 0) {
-                    map.fitBounds(limitesCarte.getBounds(), { padding: [30, 30] });
+                    map.fitBounds(limitesCarte.getBounds(), { padding: [40, 40] });
                 }
             } catch (err) {
                 console.error("Erro ao carregar mapa do cliente:", err);
@@ -113,9 +159,9 @@
             window.open(`https://wa.me/${tonNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`, '_blank');
         }
 
-        carregarMarcadores();
+        // Rafraîchissement automatique toutes les 30 secondes pour coller au temps réel
         setInterval(carregarMarcadores, 30000);
     </script>
 </body>
-                </html>
-                
+    </html>
+    
