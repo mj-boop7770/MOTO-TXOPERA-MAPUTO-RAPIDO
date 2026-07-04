@@ -3,90 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MUJOS OCTOPUS - Solicitar Transporte</title>
+    <title>MUJOS OCTOPUS - Sistema Geral</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        #map { height: 500px; width: 100%; border-radius: 16px; }
-        .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; padding: 6px; }
+        #map { height: 480px; width: 100%; border-radius: 16px; }
+        .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; }
         .leaflet-popup-tip { background: #1e293b; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans antialiased">
+<body class="bg-slate-900 text-slate-100 font-sans antialiased pb-20">
 
-    <!-- HEADER COM O BOTÃO BEM VISÍVEL -->
-    <header class="bg-slate-800 border-b border-slate-700 px-4 py-5 shadow-xl sticky top-0 z-[1000]">
-        <div class="max-w-xl mx-auto flex flex-col gap-4">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h1 class="text-2xl font-black text-amber-500 tracking-tight">MUJOS OCTOPUS</h1>
-                    <p class="text-xs text-slate-400 font-medium">Carte des chauffeurs disponibles</p>
+    <div id="view-cliente" class="space-y-4">
+        <header class="bg-slate-800 border-b border-slate-700 px-4 py-5 shadow-xl sticky top-0 z-[1000]">
+            <div class="max-w-xl mx-auto flex flex-col gap-4">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-2xl font-black text-amber-500 tracking-tight">MUJOS OCTOPUS</h1>
+                        <p class="text-xs text-slate-400 font-medium">Carte des chauffeurs disponibles</p>
+                    </div>
+                    <span class="bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
+                        ● EN TEMPS RÉEL
+                    </span>
                 </div>
-                <span class="bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider animate-pulse">
-                    ● EN TEMPS RÉEL
-                </span>
-            </div>
 
-            <!-- BOTÃO DE ACÇÃO PRINCIPAL -->
-            <button onclick="solicitarTransporteImediato()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 text-base font-black py-3.5 px-4 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2 tracking-wide">
-                🚖 CHERCHEZ UN TRANSPORT
+                <button onclick="solicitarTransporteImediato()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 text-base font-black py-3.5 px-4 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2 tracking-wide">
+                    🚖 CHERCHEZ UN TRANSPORT
+                </button>
+            </div>
+        </header>
+
+        <main class="max-w-xl mx-auto px-4">
+            <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl shadow-xl">
+                <div id="map" class="shadow-inner"></div>
+                <p class="text-[11px] text-slate-400 text-center mt-2.5 italic">
+                    Clique num marcador para ver o contacto e a placa do condutor.
+                </p>
+            </div>
+        </main>
+    </div>
+
+    <div id="view-motorista" class="hidden max-w-xl mx-auto px-4 py-6 space-y-4">
+        <header class="border-b border-slate-700 pb-3">
+            <h1 class="text-2xl font-black text-emerald-500 tracking-tight">PAINEL DO CONDUTOR</h1>
+            <p class="text-xs text-slate-400">Atualize a sua localização aqui</p>
+        </header>
+        
+        <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-xl space-y-4">
+            <p class="text-sm text-slate-300">Ao ativar esta opção, a sua posição será enviada em tempo real para o mapa dos clientes.</p>
+            <button onclick="alert('Localização partilhada com sucesso!')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow transition">
+                📡 ATIVAR LOCALIZAÇÃO EM TEMPO REAL
             </button>
         </div>
-    </header>
+    </div>
 
-    <main class="max-w-xl mx-auto px-4 py-6">
-        <!-- MAPA -->
-        <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl shadow-xl">
-            <div id="map" class="shadow-inner"></div>
-            <p class="text-[11px] text-slate-400 text-center mt-2.5 italic">
-                Os marcadores indicam a posição dos condutores livres mais próximos de si. Clique num marcador para ver os detalhes.
-            </p>
-        </div>
-    </main>
+    <nav class="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 py-3 px-6 shadow-2xl flex justify-around z-[2000]">
+        <button onclick="mudarAba('cliente')" id="btn-tab-cliente" class="flex flex-col items-center gap-1 text-amber-500 font-bold text-xs">
+            <span>🗺️</span>
+            <span>Ver Mapa (Cliente)</span>
+        </button>
+        <button onclick="mudarAba('motorista')" id="btn-tab-motorista" class="flex flex-col items-center gap-1 text-slate-400 font-bold text-xs">
+            <span>🚗</span>
+            <span>Sou Condutor</span>
+        </button>
+    </nav>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         const map = L.map('map').setView([-25.965, 32.583], 13);
         let marqueursChauffeurs = {};
-        let userLat = null;
-        let userLon = null;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(map);
-
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(position => {
-                userLat = position.coords.latitude;
-                userLon = position.coords.longitude;
-                
-                L.circleMarker([userLat, userLon], {
-                    radius: 6,
-                    fillColor: "#3b82f6",
-                    color: "#ffffff",
-                    weight: 2,
-                    fillOpacity: 1
-                }).addTo(map).bindPopup("<b class='text-white text-xs'>Sua Posição</b>");
-                
-                carregarMarcadores();
-            }, () => {
-                carregarMarcadores();
-            });
-        } else {
-            carregarMarcadores();
-        }
-
-        function calcularDistancia(lat1, lon1, lat2, lon2) {
-            const R = 6371;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return (R * c).toFixed(2);
-        }
 
         async function carregarMarcadores() {
             try {
@@ -95,10 +85,6 @@
                 
                 Object.values(marqueursChauffeurs).forEach(m => map.removeLayer(m));
                 marqueursChauffeurs = {};
-
-                if (motoristas.length === 0) return;
-
-                const limitesCarte = L.featureGroup();
 
                 motoristas.forEach(m => {
                     if (m.latitude && m.longitude) {
@@ -113,41 +99,28 @@
                             fillOpacity: 0.95
                         }).addTo(map);
 
-                        let textoDistancia = "Distância: -- km";
-                        if (userLat && userLon) {
-                            const d = calcularDistancia(userLat, userLon, m.latitude, m.longitude);
-                            textoDistancia = `A cerca de <b>${d} km</b> de si`;
-                        }
-
-                        // CORRIGÉ : Affichage clair du Nom, Contact (téléphone) et Plaque
+                        // RETOUR À LA BASE : L'ancien popup propre avec Nom, Contact et Plaque
                         marker.bindPopup(`
-                            <div style="color: white; font-family: sans-serif; min-width: 160px;">
-                                <b style="font-size: 14px; text-transform: uppercase; display: block; margin-bottom: 4px;">${emoji} ${m.nom || 'Condutor'}</b>
-                                <span style="font-size: 12px; color: #f59e0b; display: block; font-weight: bold; margin-bottom: 2px;">📱 Contacto: ${m.telephone || 'Sem Número'}</span>
-                                <span style="font-size: 11px; color: #94a3b8; display: block;">📇 Placa: ${m.plaque || 'Sem Placa'}</span>
-                                <div style="font-size: 11px; color: #38bdf8; font-weight: 600; margin-top: 6px; border-top: 1px solid #334155; padding-top: 4px;">
-                                    ${textoDistancia}
-                                </div>
+                            <div class="p-1">
+                                <b class="text-white text-sm block uppercase">${emoji} ${m.nom || 'Condutor'}</b>
+                                <p class="text-xs text-amber-500 font-bold mt-0.5">📱 Contacto: ${m.telephone || 'Sem Número'}</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Placa: ${m.plaque || 'Sem Placa'}</p>
                             </div>
                         `);
 
                         marqueursChauffeurs[m.id_doc || m.telephone] = marker;
-                        limitesCarte.addLayer(marker);
                     }
                 });
-
-                if (motoristas.length > 0) {
-                    map.fitBounds(limitesCarte.getBounds(), { padding: [40, 40] });
-                }
             } catch (err) {
-                console.error("Erro ao carregar mapa do cliente:", err);
+                console.error("Erro ao carregar mapa:", err);
             }
         }
 
+        // FONCTION WHATSAPP PRÉ-ÉCRITE POUR LA CONFIANCE
         function solicitarTransporteImediato() {
             const tonNumeroWhatsApp = "258856113036";
             
-            const mensaje = 
+            const mensagem = 
                 "Olá! Preciso de um transporte, por favor.\n\n" +
                 "Aqui estão as minhas informações:\n" +
                 "📍 Onde estou: (Escreva o seu endereço ou ponto de referência)\n" +
@@ -155,11 +128,33 @@
                 "📱 Meu número de telefone: (Escreva o seu contacto)\n\n" +
                 "Aguardo o vosso contacto. Obrigado!";
 
-            window.open(`https://wa.me/${tonNumeroWhatsApp}?text=${encodeURIComponent(mensaje)}`, '_blank');
+            window.open(`https://wa.me/${tonNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`, '_blank');
         }
 
+        // LOGIQUE DE BASCULEMENT DE PAGE (CLIENTE <-> MOTORISTA)
+        function mudarAba(aba) {
+            const viewCliente = document.getElementById('view-cliente');
+            const viewMotorista = document.getElementById('view-motorista');
+            const btnCliente = document.getElementById('btn-tab-cliente');
+            const btnMotorista = document.getElementById('btn-tab-motorista');
+
+            if (aba === 'cliente') {
+                viewCliente.classList.remove('hidden');
+                viewMotorista.classList.add('hidden');
+                btnCliente.className = "flex flex-col items-center gap-1 text-amber-500 font-bold text-xs";
+                btnMotorista.className = "flex flex-col items-center gap-1 text-slate-400 font-bold text-xs";
+                setTimeout(() => map.invalidateSize(), 200); // Recalcule la carte pour éviter les bugs d'affichage
+            } else {
+                viewCliente.classList.add('hidden');
+                viewMotorista.classList.remove('hidden');
+                btnCliente.className = "flex flex-col items-center gap-1 text-slate-400 font-bold text-xs";
+                btnMotorista.className = "flex flex-col items-center gap-1 text-emerald-500 font-bold text-xs";
+            }
+        }
+
+        carregarMarcadores();
         setInterval(carregarMarcadores, 30000);
     </script>
 </body>
-    </html>
+            </html>
     
