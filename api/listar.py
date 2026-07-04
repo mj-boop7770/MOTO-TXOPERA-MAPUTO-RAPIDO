@@ -26,6 +26,7 @@ class handler(BaseHTTPRequestHandler):
             for doc in docs:
                 m = doc.to_dict()
                 lista_motoristas.append({
+                    "id_doc": doc.id,  # <--- CRUCIAL : On transmet l'ID réel du document Firebase ici !
                     "tipo": m.get("tipo"),
                     "nom": m.get("nom"),
                     "telephone": m.get("telephone"),
@@ -38,6 +39,13 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*') # Évite les blocages de sécurité
+            
+            # --- CONFIGURATION ANTI-CACHE STRICTE POUR VERCEL ---
+            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            self.send_header('Pragma', 'no-cache')
+            self.send_header('Expires', '0')
+            # ----------------------------------------------------
+            
             self.end_headers()
             
             self.wfile.write(json.dumps(lista_motoristas).encode('utf-8'))
