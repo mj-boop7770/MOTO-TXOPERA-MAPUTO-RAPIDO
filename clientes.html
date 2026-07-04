@@ -3,70 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MUJOS OCTOPUS - Sistema Geral</title>
+    <title>MUJOS OCTOPUS - Solicitar Transporte</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        #map { height: 480px; width: 100%; border-radius: 16px; }
+        #map { height: 450px; width: 100%; border-radius: 16px; }
         .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; }
         .leaflet-popup-tip { background: #1e293b; }
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans antialiased pb-20">
+<body class="bg-slate-900 text-slate-100 font-sans antialiased">
 
-    <div id="view-cliente" class="space-y-4">
-        <header class="bg-slate-800 border-b border-slate-700 px-4 py-5 shadow-xl sticky top-0 z-[1000]">
-            <div class="max-w-xl mx-auto flex flex-col gap-4">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <h1 class="text-2xl font-black text-amber-500 tracking-tight">MUJOS OCTOPUS</h1>
-                        <p class="text-xs text-slate-400 font-medium">Carte des chauffeurs disponibles</p>
-                    </div>
-                    <span class="bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">
-                        ● EN TEMPS RÉEL
-                    </span>
+    <!-- HEADER & ACTION PRINCIPALE -->
+    <header class="bg-slate-800 border-b border-slate-700 px-4 py-5 shadow-xl sticky top-0 z-[1000]">
+        <div class="max-w-xl mx-auto flex flex-col gap-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-black text-amber-500 tracking-tight">MUJOS OCTOPUS</h1>
+                    <p class="text-xs text-slate-400 font-medium">Mapa de Condutores Disponíveis</p>
                 </div>
-
-                <button onclick="solicitarTransporteImediato()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 text-base font-black py-3.5 px-4 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2 tracking-wide">
-                    🚖 CHERCHEZ UN TRANSPORT
-                </button>
+                <span class="bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider animate-pulse">
+                    ● Em Tempo Real
+                </span>
             </div>
-        </header>
 
-        <main class="max-w-xl mx-auto px-4">
-            <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl shadow-xl">
-                <div id="map" class="shadow-inner"></div>
-                <p class="text-[11px] text-slate-400 text-center mt-2.5 italic">
-                    Clique num marcador para ver o contacto e a placa do condutor.
-                </p>
-            </div>
-        </main>
-    </div>
-
-    <div id="view-motorista" class="hidden max-w-xl mx-auto px-4 py-6 space-y-4">
-        <header class="border-b border-slate-700 pb-3">
-            <h1 class="text-2xl font-black text-emerald-500 tracking-tight">PAINEL DO CONDUTOR</h1>
-            <p class="text-xs text-slate-400">Atualize a sua localização aqui</p>
-        </header>
-        
-        <div class="bg-slate-800 border border-slate-700 p-5 rounded-2xl shadow-xl space-y-4">
-            <p class="text-sm text-slate-300">Ao ativar esta opção, a sua posição será enviada em tempo real para o mapa dos clientes.</p>
-            <button onclick="alert('Localização partilhada com sucesso!')" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl shadow transition">
-                📡 ATIVAR LOCALIZAÇÃO EM TEMPO REAL
+            <!-- BOUTON D'ACTION PRINCIPAL TRÈS VISIBLE -->
+            <button onclick="toggleFormulario()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 text-base font-black py-3 px-4 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+                🚖 PROCURAR TRANSPORTE
             </button>
         </div>
-    </div>
+    </header>
 
-    <nav class="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 py-3 px-6 shadow-2xl flex justify-around z-[2000]">
-        <button onclick="mudarAba('cliente')" id="btn-tab-cliente" class="flex flex-col items-center gap-1 text-amber-500 font-bold text-xs">
-            <span>🗺️</span>
-            <span>Ver Mapa (Cliente)</span>
-        </button>
-        <button onclick="mudarAba('motorista')" id="btn-tab-motorista" class="flex flex-col items-center gap-1 text-slate-400 font-bold text-xs">
-            <span>🚗</span>
-            <span>Sou Condutor</span>
-        </button>
-    </nav>
+    <main class="max-w-xl mx-auto px-4 py-6 space-y-6">
+
+        <!-- FORMULAIRE AUTOMATIQUE DE COLLECTE D'INFORMATIONS (CACHÉ PAR DÉFAUT) -->
+        <div id="form-solicitacao" class="hidden bg-slate-800 border border-amber-500/40 p-5 rounded-2xl shadow-2xl space-y-4 transition-all">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                <h2 class="text-sm font-bold text-amber-500 uppercase tracking-wider">📋 Detalhes da sua Viagem</h2>
+                <button onclick="toggleFormulario()" class="text-slate-400 hover:text-white text-xs">Fechar ✕</button>
+            </div>
+            
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Seu Número de Contacto:</label>
+                    <input type="text" id="cli-phone" placeholder="Ex: 841234567" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500 font-bold">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Onde se encontra agora? (Endereço/Bairro):</label>
+                    <input type="text" id="cli-origem" placeholder="Ex: Mercado de Zimpeto, junto à paragem" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Para onde vai exatamente? (Destino):</label>
+                    <input type="text" id="cli-destino" placeholder="Ex: Praça dos Combatentes, Maputo" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+                </div>
+            </div>
+
+            <button onclick="enviarSolicitacaoAutomatica()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm py-2.5 rounded-lg shadow transition">
+                🟢 Enviar Pedido via WhatsApp
+            </button>
+        </div>
+
+        <!-- CARTE DES CHAUFFEURS -->
+        <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl shadow-xl">
+            <div id="map" class="shadow-inner"></div>
+            <p class="text-[11px] text-slate-400 text-center mt-2.5 italic">
+                Os marcadores indicam a última posição conhecida dos condutores ativos.
+            </p>
+        </div>
+    </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
@@ -86,6 +90,10 @@
                 Object.values(marqueursChauffeurs).forEach(m => map.removeLayer(m));
                 marqueursChauffeurs = {};
 
+                if (motoristas.length === 0) return;
+
+                const limitesCarte = L.featureGroup();
+
                 motoristas.forEach(m => {
                     if (m.latitude && m.longitude) {
                         const emoji = m.tipo === "moto" ? "🏍️" : "🛺";
@@ -99,62 +107,59 @@
                             fillOpacity: 0.95
                         }).addTo(map);
 
-                        // RETOUR À LA BASE : L'ancien popup propre avec Nom, Contact et Plaque
                         marker.bindPopup(`
-                            <div class="p-1">
-                                <b class="text-white text-sm block uppercase">${emoji} ${m.nom || 'Condutor'}</b>
-                                <p class="text-xs text-amber-500 font-bold mt-0.5">📱 Contacto: ${m.telephone || 'Sem Número'}</p>
-                                <p class="text-xs text-slate-400 mt-0.5">Placa: ${m.plaque || 'Sem Placa'}</p>
+                            <div class="p-0.5 text-center">
+                                <b class="text-white text-xs">${emoji} DISPONÍVEL</b>
                             </div>
                         `);
 
                         marqueursChauffeurs[m.id_doc || m.telephone] = marker;
+                        limitesCarte.addLayer(marker);
                     }
                 });
+
+                if (motoristas.length > 0) {
+                    map.fitBounds(limitesCarte.getBounds(), { padding: [30, 30] });
+                }
             } catch (err) {
-                console.error("Erro ao carregar mapa:", err);
+                console.error("Erro ao carregar mapa do cliente:", err);
             }
         }
 
-        // FONCTION WHATSAPP PRÉ-ÉCRITE POUR LA CONFIANCE
-        function solicitarTransporteImediato() {
-            const tonNumeroWhatsApp = "258856113036";
+        // FONCTION DE COMMUTATION DU FORMULAIRE
+        function toggleFormulario() {
+            const form = document.getElementById('form-solicitacao');
+            form.classList.toggle('hidden');
+        }
+
+        // COLLECTE AUTOMATIQUE ET ENVOI SUR TON WHATSAPP
+        function enviarSolicitacaoAutomatica() {
+            const telefone = document.getElementById('cli-phone').value.trim();
+            const origem = document.getElementById('cli-origem').value.trim();
+            const destino = document.getElementById('cli-destino').value.trim();
+
+            if (!telefone || !origem || !destino) {
+                alert("Por favor, preencha todos os campos para solicitar o transporte.");
+                return;
+            }
+
+            // Construction du message structuré
+            const mensagemFormatada = `🚨 *NOVO PEDIDO DE TRANSPORTE - MUJOS OCTOPUS*\n\n` +
+                                     `📱 *Contacto do Cliente:* ${telefone}\n` +
+                                     `📍 *Onde está:* ${origem}\n` +
+                                     `🏁 *Para onde vai:* ${destino}`;
+
+            // Remplace par ton numéro WhatsApp commercial Mujos Octopus (avec l'identifiant pays 258)
+            const tonNumeroWhatsApp = "258856113036"; 
             
-            const mensagem = 
-                "Olá! Preciso de um transporte, por favor.\n\n" +
-                "Aqui estão as minhas informações:\n" +
-                "📍 Onde estou: (Escreva o seu endereço ou ponto de referência)\n" +
-                "🏁 Para onde vou: (Escreva o seu destino)\n" +
-                "📱 Meu número de telefone: (Escreva o seu contacto)\n\n" +
-                "Aguardo o vosso contacto. Obrigado!";
-
-            window.open(`https://wa.me/${tonNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`, '_blank');
+            const urlWhatsapp = `https://wa.me/${tonNumeroWhatsApp}?text=${encodeURIComponent(mensagemFormatada)}`;
+            window.open(urlWhatsapp, '_blank');
         }
 
-        // LOGIQUE DE BASCULEMENT DE PAGE (CLIENTE <-> MOTORISTA)
-        function mudarAba(aba) {
-            const viewCliente = document.getElementById('view-cliente');
-            const viewMotorista = document.getElementById('view-motorista');
-            const btnCliente = document.getElementById('btn-tab-cliente');
-            const btnMotorista = document.getElementById('btn-tab-motorista');
-
-            if (aba === 'cliente') {
-                viewCliente.classList.remove('hidden');
-                viewMotorista.classList.add('hidden');
-                btnCliente.className = "flex flex-col items-center gap-1 text-amber-500 font-bold text-xs";
-                btnMotorista.className = "flex flex-col items-center gap-1 text-slate-400 font-bold text-xs";
-                setTimeout(() => map.invalidateSize(), 200); // Recalcule la carte pour éviter les bugs d'affichage
-            } else {
-                viewCliente.classList.add('hidden');
-                viewMotorista.classList.remove('hidden');
-                btnCliente.className = "flex flex-col items-center gap-1 text-slate-400 font-bold text-xs";
-                btnMotorista.className = "flex flex-col items-center gap-1 text-emerald-500 font-bold text-xs";
-            }
-        }
-
+        // Rafraîchissement automatique toutes les 30 secondes
         carregarMarcadores();
         setInterval(carregarMarcadores, 30000);
     </script>
 </body>
-            </html>
-    
+    </html>
+                    
