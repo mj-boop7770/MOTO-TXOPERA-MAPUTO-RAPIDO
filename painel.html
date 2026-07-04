@@ -110,6 +110,9 @@
                     const emoji = m.tipo === "moto" ? "🏍️" : "🛺";
                     if(m.telephone) listaContactosGlobais.push(m.telephone);
                     
+                    // On utilise le téléphone ou l'id de document Firebase
+                    const uniqueId = m.id_doc || m.telephone;
+
                     if (m.latitude && m.longitude) {
                         const cor = m.tipo === "moto" ? "#ff6b00" : "#00cc44";
                         
@@ -131,7 +134,7 @@
                             </div>
                         `);
                         
-                        marqueursChauffeurs[m.id_doc] = marker;
+                        marqueursChauffeurs[uniqueId] = marker;
                         limitesCarte.addLayer(marker);
                     }
 
@@ -140,10 +143,10 @@
                     tr.innerHTML = `
                         <td class="px-4 py-3.5 font-medium">${emoji} ${m.tipo === "moto" ? "Moto" : "Txopela"}</td>
                         <td class="px-4 py-3.5 font-bold text-white flex items-center gap-3">
-                            <button onclick="deletarMotorista('${m.id_doc}')" class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white px-2 py-1 rounded text-xs font-black transition" title="Eliminar Motorista">
+                            <button onclick="deletarMotorista('${uniqueId}')" class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white px-2 py-1 rounded text-xs font-black transition" title="Eliminar Motorista">
                                 ❌
                             </button>
-                            <span onclick="focarNoMotorista('${m.id_doc}')" class="underline decoration-amber-500/50 hover:text-amber-400 cursor-pointer transition">
+                            <span onclick="focarNoMotorista('${uniqueId}')" class="underline decoration-amber-500/50 hover:text-amber-400 cursor-pointer transition">
                                 ${m.nom.toUpperCase()}
                             </span>
                         </td>
@@ -215,5 +218,5 @@
         carregarPainel();
     </script>
 </body>
-            </html>
-                
+    </html>
+    
