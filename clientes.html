@@ -8,34 +8,31 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #map { height: 500px; width: 100%; border-radius: 16px; }
-        .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; }
+        .leaflet-popup-content-wrapper { background: #1e293b; color: white; border-radius: 8px; padding: 4px; }
         .leaflet-popup-tip { background: #1e293b; }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 font-sans antialiased">
 
-    <!-- HEADER AVEC LE BOUTON VISIBLE -->
     <header class="bg-slate-800 border-b border-slate-700 px-4 py-5 shadow-xl sticky top-0 z-[1000]">
         <div class="max-w-xl mx-auto flex flex-col gap-4">
             <div class="flex justify-between items-center">
                 <div>
                     <h1 class="text-2xl font-black text-amber-500 tracking-tight">MUJOS OCTOPUS</h1>
-                    <p class="text-xs text-slate-400 font-medium">Mapa de Condutores Disponíveis</p>
+                    <p class="text-xs text-slate-400 font-medium">Carte des chauffeurs disponibles</p>
                 </div>
                 <span class="bg-slate-700 text-slate-300 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider animate-pulse">
-                    ● Em Tempo Real
+                    ● EN TEMPS RÉEL
                 </span>
             </div>
 
-            <!-- BOUTON D'ACTION PRINCIPAL -->
             <button onclick="solicitarTransporteImediato()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-900 text-base font-black py-3.5 px-4 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2 tracking-wide">
-                🚖 PROCURAR TRANSPORTE
+                🚖 CHERCHEZ UN TRANSPORT
             </button>
         </div>
     </header>
 
     <main class="max-w-xl mx-auto px-4 py-6">
-        <!-- MAPA -->
         <div class="bg-slate-800 border border-slate-700 p-3 rounded-2xl shadow-xl">
             <div id="map" class="shadow-inner"></div>
             <p class="text-[11px] text-slate-400 text-center mt-2.5 italic">
@@ -56,13 +53,13 @@
             maxZoom: 19
         }).addTo(map);
 
-        // Géolocalisation du client pour calculer la distance
+        // Obter geolocalização do cliente para cálculo de distância
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(position => {
                 userLat = position.coords.latitude;
                 userLon = position.coords.longitude;
                 
-                // Petit marqueur bleu pour le client
+                // Marcador do próprio cliente na carte
                 L.circleMarker([userLat, userLon], {
                     radius: 6,
                     fillColor: "#3b82f6",
@@ -80,7 +77,7 @@
         }
 
         function calcularDistancia(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Rayon de la Terre en km
+            const R = 6371; // Raio da Terra em km
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -115,19 +112,21 @@
                             fillOpacity: 0.95
                         }).addTo(map);
 
-                        // Calcul de la distance si la position client est dispo
+                        // Texto de distância original
                         let textoDistancia = "Distância: -- km";
                         if (userLat && userLon) {
                             const d = calcularDistancia(userLat, userLon, m.latitude, m.longitude);
                             textoDistancia = `A cerca de <b>${d} km</b> de si`;
                         }
 
-                        // Le super popup complet qui donne confiance (Nom, Plaque, Distance)
+                        // RETOUR AU POPUP D'ORIGINE : Simple, propre, sans coupure HTML
                         marker.bindPopup(`
-                            <div class="p-1 line-clamp-3">
-                                <b class="text-white text-sm uppercase">${emoji} ${m.nom || 'Condutor'}</b>
-                                <p class="text-xs text-slate-400 mt-0.5">Placa: ${m.plaque || 'Sem Placa'}</p>
-                                <p class="text-xs text-amber-500 font-semibold mt-1 border-t border-slate-700 pt-1">${textoDistancia}</p>
+                            <div style="color: white; font-family: sans-serif;">
+                                <b style="font-size: 14px; text-transform: uppercase; display: block; margin-bottom: 4px;">${emoji} ${m.nom || 'Condutor'}</b>
+                                <span style="font-size: 12px; color: #94a3b8; display: block;">Plaque: ${m.plaque || 'Sem Placa'}</span>
+                                <div style="font-size: 12px; color: #f59e0b; font-weight: 600; margin-top: 6px; border-top: 1px solid #334155; padding-top: 4px;">
+                                    ${textoDistancia}
+                                </div>
                             </div>
                         `);
 
@@ -144,7 +143,7 @@
             }
         }
 
-        // FONCTION WHATSAPP PRÉ-ÉCRITE
+        // FUNÇÃO WHATSAPP COM SUCESSO
         function solicitarTransporteImediato() {
             const tonNumeroWhatsApp = "258856113036";
             
@@ -159,7 +158,7 @@
             window.open(`https://wa.me/${tonNumeroWhatsApp}?text=${encodeURIComponent(mensagem)}`, '_blank');
         }
 
-        // Rafraîchissement automatique toutes les 30 secondes pour coller au temps réel
+        // Atualização automática em tempo real
         setInterval(carregarMarcadores, 30000);
     </script>
 </body>
