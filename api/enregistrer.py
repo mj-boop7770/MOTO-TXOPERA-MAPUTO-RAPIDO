@@ -4,7 +4,7 @@ import os
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# Initialisation sécurisée de Firebase via ta variable d'environnement globale
+# Initialisation sécurisée de Firebase
 firebase_config = os.environ.get("FIREBASE_CONFIG")
 
 if firebase_config and not firebase_admin._apps:
@@ -18,7 +18,6 @@ if firebase_config and not firebase_admin._apps:
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
-            # Récupération sécurisée du contenu JSON envoyé
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length)
             data = json.loads(post_data.decode('utf-8'))
@@ -32,45 +31,52 @@ class handler(BaseHTTPRequestHandler):
 
             db = firestore.client()
 
-            # ----------------------------------------------------
-            # ACTION A : SUPPRESSION DEPUIS LE PANNEAU CEO (❌)
-            # ----------------------------------------------------
+            # ACTION A : SUPPRESSION DEFINITIVE
             if data.get("action") == "delete":
                 id_doc = data.get("id_doc")
                 if not id_doc:
                     self.send_response(400)
-                    self.send_header('Content-type', 'application/json')
                     self.end_headers()
-                    self.wfile.write(json.dumps({"erreur": "ID do documento em falta"}).encode('utf-8'))
                     return
                 
-                # Suppression définitive dans la collection Firestore
                 db.collection("motoristas").document(str(id_doc)).delete()
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
-                # En-têtes anti-cache pour forcer Vercel à détruire la donnée immédiatement
                 self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                self.send_header('Pragma', 'no-cache')
-                self.send_header('Expires', '0')
                 self.end_headers()
-                
-                self.wfile.write(json.dumps({"status": "deletado", "message": "Condutor removido"}).encode('utf-8'))
+                self.wfile.write(json.dumps({"status": "deletado"}).encode('utf-8'))
                 return
 
-            # ----------------------------------------------------
-            # ACTION B : ENREGISTREMENT DEPUIS LE FORMULAIRE CHAUFFEUR
-            # ----------------------------------------------------
+            # ACTION B : ATTRIBUTION DE COURSE (DISPATCH)
+            if data.get("action") == "assign":
+                id_doc = data.get("id_doc")
+                novo_status = data.get("status", "em_viagem") # "em_viagem" ou "disponivel" pour le reset
+                
+                if not id_doc:
+                    self.send_response(400)
+                    self.end_headers()
+                    return
+                
+                # Mise à jour dynamique du statut dans Firebase
+                db.collection("motoristas").document(str(id_doc)).update({"status": novo_status})
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "sucesso", "motorista_status": novo_status}).encode('utf-8'))
+                return
+
+            # ACTION C : ENREGISTREMENT INITIAL CHAUFFEUR
             telephone = data.get("telephone")
             if not telephone:
                 self.send_response(400)
-                self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({"erreur": "Numero de telefone obrigatorio"}).encode('utf-8'))
                 return
 
-            # Préparation de l'objet avec inclusion du statut "disponivel" exigé par ton do_GET
             moto_data = {
                 "tipo": data.get("tipo", "moto"),
                 "nom": data.get("nom", "Anonimo"),
@@ -81,18 +87,14 @@ class handler(BaseHTTPRequestHandler):
                 "status": "disponivel"
             }
 
-            # Enregistrement unique (le numéro écrase l'ancienne position)
             db.collection("motoristas").document(str(telephone)).set(moto_data)
 
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-            self.send_header('Pragma', 'no-cache')
-            self.send_header('Expires', '0')
             self.end_headers()
-            
-            self.wfile.write(json.dumps({"status": "sucesso", "message": "Posicao gravada"}).encode('utf-8'))
+            self.wfile.write(json.dumps({"status": "sucesso"}).encode('utf-8'))
 
         except Exception as e:
             self.send_response(500)
