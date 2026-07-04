@@ -65,13 +65,13 @@
             </div>
         </div>
 
-        <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-xl">
+        <div class="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-xl mb-8">
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-700/50 text-slate-300 text-xs font-bold uppercase tracking-wider border-b border-slate-700">
                             <th class="px-4 py-3">Taper</th>
-                            <th class="px-4 py-3">Nom / Direction</th>
+                            <th class="px-4 py-3">Nom / Acções</th>
                             <th class="px-4 py-3">Contact (Téléphone portable)</th>
                         </tr>
                     </thead>
@@ -85,6 +85,17 @@
                 </table>
             </div>
         </div>
+
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-xl">
+            <h3 class="text-sm font-bold text-rose-400 mb-2">🔄 Central de Recuperação (Se o motorista não responder)</h3>
+            <p class="text-xs text-slate-400 mb-3">Se um condutor recusar no WhatsApp ou não responder, introduza o número dele abaixo para o fazer regressar ao mapa imediatamente.</p>
+            <div class="flex gap-2 max-w-md">
+                <input type="text" id="recover-phone-input" placeholder="Ex: 8732138..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-rose-500">
+                <button onclick="recuperarMotoristaManualmente()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-4 py-2 rounded-lg transition shadow">
+                    🔄 Repor Disponível
+                </button>
+            </div>
+        </div>
     </main>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -92,8 +103,9 @@
         const adminMap = L.map('admin-map').setView([-25.965, 32.583], 13);
         let marqueursChauffeurs = {};
         let listaContactosGlobais = [];
-        let listeChauffeursStockes = []; // Stockage temporaire pour filtrer localement au clavier
-        let cercleZoneId = null; // Pour dessiner la zone recherchée sur la carte
+        let listeChauffeursStockes = []; 
+        let cercleZoneId = null; 
+        let zoneActuelleRecherche = "Maputo"; // Par défaut
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
@@ -123,7 +135,7 @@
             listaContactosGlobais = [];
 
             if (motoristas.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-slate-500">Nenhum motorista encontrado nesta zona.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-8 text-center text-slate-500">Nenhum motorista disponível nesta zona.</td></tr>`;
                 return;
             }
 
@@ -150,9 +162,6 @@
                         <div class="p-1">
                             <b class="text-white text-sm">${emoji} ${m.nom.toUpperCase()}</b>
                             <p class="text-xs text-slate-400 mt-0.5">Placa: ${m.plaque || 'Sem Placa'}</p>
-                            <a href="tel:${m.telephone}" class="mt-2 block bg-emerald-600 text-white text-center text-xs font-bold py-1 px-2 rounded">
-                                📞 Ligar: ${m.telephone}
-                            </a>
                         </div>
                     `);
                     
@@ -164,11 +173,16 @@
                 tr.className = "hover:bg-slate-700/30 transition";
                 tr.innerHTML = `
                     <td class="px-4 py-3.5 font-medium">${emoji} ${m.tipo === "moto" ? "Moto" : "Txopela"}</td>
-                    <td class="px-4 py-3.5 font-bold text-white flex items-center gap-3">
-                        <button onclick="deletarMotorista('${uniqueId}')" class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white px-2 py-1 rounded text-xs font-black transition" title="Eliminar Motorista">
+                    <td class="px-4 py-3.5 flex flex-wrap items-center gap-2">
+                        <button onclick="deletarMotorista('${uniqueId}')" class="bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white px-2 py-1 rounded text-xs font-black transition" title="Eliminar definitivamente">
                             ❌
                         </button>
-                        <span onclick="focarNoMotorista('${uniqueId}')" class="underline decoration-amber-500/50 hover:text-amber-400 cursor-pointer transition">
+                        
+                        <button onclick="atribuirEEnviar('${uniqueId}', '${m.nom}', '${m.telephone}')" class="bg-amber-500/20 hover:bg-amber-500 text-amber-400 hover:text-slate-900 px-2 py-1 rounded text-xs font-bold transition">
+                            🚀 Enviar
+                        </button>
+
+                        <span onclick="focarNoMotorista('${uniqueId}')" class="underline decoration-amber-500/50 hover:text-amber-400 cursor-pointer font-bold text-white transition ml-1">
                             ${m.nom.toUpperCase()}
                         </span>
                     </td>
@@ -182,7 +196,6 @@
             }
         }
 
-        // RECHERCHE UNIQUE ET SUR DEMANDE PAR ADRESSE
         async function buscarPorEndereco() {
             const endereco = document.getElementById('address-input').value;
             const statusText = document.getElementById('search-status');
@@ -193,27 +206,25 @@
             }
 
             statusText.textContent = "A buscar coordenadas da zona...";
+            zoneActuelleRecherche = endereco;
 
             try {
-                // Requête unique vers l'API OpenStreetMap restreinte à la région de Maputo/Mozambique
                 const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endereco)}+Maputo&limit=1`;
                 const response = await fetch(url);
                 const results = await response.json();
 
                 if (results.length === 0) {
-                    statusText.textContent = "Zona não encontrada. Tente escrever de outra forma.";
+                    statusText.textContent = "Zona não encontrada. Tente de outra forma.";
                     return;
                 }
 
                 const targetLat = parseFloat(results[0].lat);
                 const targetLon = parseFloat(results[0].lon);
 
-                statusText.textContent = `Zona encontrada: ${results[0].display_name}. Filtrando condutores a menos de 3km...`;
+                statusText.textContent = `Zona filtrada: ${results[0].display_name}. Mostrando raio de 3km.`;
 
-                // Supprimer l'ancien cercle s'il existe
                 if (cercleZoneId) adminMap.removeLayer(cercleZoneId);
 
-                // Dessiner la zone recherchée sur la carte (rayon 3000 mètres)
                 cercleZoneId = L.circle([targetLat, targetLon], {
                     radius: 3000,
                     color: '#f59e0b',
@@ -221,25 +232,25 @@
                     fillOpacity: 0.15
                 }).addTo(adminMap);
 
-                // Filtrer les chauffeurs localement selon la distance (Formule de Haversine)
                 const chauffeursFiltres = listeChauffeursStockes.filter(m => {
                     if (!m.latitude || !m.longitude) return false;
                     const dist = calcularDistancia(targetLat, targetLon, m.latitude, m.longitude);
-                    return dist <= 3.0; // 3 Kilomètres maximum
+                    return dist <= 3.0;
                 });
 
                 renderTableau(chauffeursFiltres);
                 adminMap.setView([targetLat, targetLon], 14);
 
             } catch (error) {
-                console.error("Erro na busca de endereço:", error);
-                statusText.textContent = "Erro ao processar a busca da zona.";
+                console.error(error);
+                statusText.textContent = "Erro na busca.";
             }
         }
 
         function limparFiltroEndereco() {
             document.getElementById('address-input').value = '';
             document.getElementById('search-status').textContent = '';
+            zoneActuelleRecherche = "Maputo";
             if (cercleZoneId) {
                 adminMap.removeLayer(cercleZoneId);
                 cercleZoneId = null;
@@ -247,9 +258,8 @@
             renderTableau(listeChauffeursStockes);
         }
 
-        // Formule mathématique pour calculer la distance entre deux points GPS
         function calcularDistancia(lat1, lon1, lat2, lon2) {
-            const R = 6371; // Rayon de la terre en km
+            const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -257,6 +267,70 @@
                       Math.sin(dLon/2) * Math.sin(dLon/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
             return R * c;
+        }
+
+        // FONCTION LOGISTIQUE D'ATTRIBUTION + DISPATCH WHATSAPP
+        async function atribuirEEnviar(idDoc, nome, telefone) {
+            const mensagemWhatsApp = `🚨 *MUJOS OCTOPUS - NOVA CORRIDA*\n\nOlá, *${nome.toUpperCase()}*!\nTens uma nova corrida atribuída na zona de *${zoneActuelleRecherche.toUpperCase()}*.\n\n👉 *Responde a esta mensagem com:*\n*1* - Para ACEITAR ✅\n*2* - Para REJEITAR ❌`;
+            
+            if (confirm(`Desejas atribuir a corrida a ${nome} e enviar os detalhes para o WhatsApp?`)) {
+                try {
+                    const response = await fetch('/api/enregistrer', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            action: "assign", 
+                            id_doc: idDoc,
+                            status: "em_viagem"
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        alert("Corrida registada! Abrindo o WhatsApp para o condutor...");
+                        // Ouvre WhatsApp Web ou App avec le message formaté
+                        const urlWhatsapp = `https://wa.me/${telefone.replace(/\s+/g, '')}?text=${encodeURIComponent(mensagemWhatsApp)}`;
+                        window.open(urlWhatsapp, '_blank');
+                        
+                        // Rafraîchit l'affichage pour le faire disparaître du tableau
+                        window.location.reload(true);
+                    } else {
+                        alert("Erro ao mudar o estado no servidor.");
+                    }
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        }
+
+        // RESET DE SECOURS (REPASSER EN DISPONIBLE)
+        async function recuperarMotoristaManualmente() {
+            const phone = document.getElementById('recover-phone-input').value.trim();
+            if (!phone) {
+                alert("Insira o número de telefone do condutor.");
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/enregistrer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        action: "assign", 
+                        id_doc: phone,
+                        status: "disponivel"
+                    })
+                });
+                
+                if (response.ok) {
+                    alert(`O condutor ${phone} foi reposto com sucesso como DISPONÍVEL!`);
+                    document.getElementById('recover-phone-input').value = '';
+                    window.location.reload(true);
+                } else {
+                    alert("Não foi possível repor o condutor. Verifique se o número está correto.");
+                }
+            } catch (error) {
+                console.error(error);
+            }
         }
 
         function focarNoMotorista(idDoc) {
@@ -271,38 +345,26 @@
         }
 
         async function deletarMotorista(idDoc) {
-            if (confirm("Tens a certeza que desejas remover este condutor do mapa?")) {
+            if (confirm("Tens a certeza que desejas remover este condutor do mapa definitivamente?")) {
                 try {
                     const response = await fetch('/api/enregistrer', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            action: "delete", 
-                            id_doc: idDoc 
-                        })
+                        body: JSON.stringify({ action: "delete", id_doc: idDoc })
                     });
-                    
                     if (response.ok) {
-                        alert("Condutor removido com sucesso!");
+                        alert("Removido com sucesso!");
                         window.location.reload(true);
-                    } else {
-                        const txt = await response.text();
-                        alert("Erro ao eliminar: " + txt);
                     }
                 } catch (error) {
-                    console.error("Erro:", error);
-                    alert("Erro de conexão.");
+                    console.error(error);
                 }
             }
         }
 
         function enviarSmsMassa() {
-            if (listaContactosGlobais.length === 0) {
-                alert("Nenhum contacto disponível.");
-                return;
-            }
-            const linkSms = `sms:${listaContactosGlobais.join(',')};?body=Olá%20Equipa%20Haulzao-2!`;
-            window.location.href = linkSms;
+            if (listaContactosGlobais.length === 0) { alert("Nenhum contacto."); return; }
+            window.location.href = `sms:${listaContactosGlobais.join(',')};?body=Olá!`;
         }
 
         function abrirGrupoWhatsapp() {
@@ -312,5 +374,5 @@
         carregarPainel();
     </script>
 </body>
-                    </html>
-                
+                                                         </html>
+            
