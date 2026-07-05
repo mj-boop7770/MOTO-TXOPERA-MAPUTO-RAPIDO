@@ -31,6 +31,9 @@
                 <p class="text-xs text-amber-100 font-medium">Motes & Txopelas em tempo real</p>
             </div>
             <div class="flex items-center gap-2">
+                <button onclick="abrirTutorial()" class="bg-white/20 hover:bg-white/30 text-white text-xs font-black px-3 py-2 rounded-lg transition shadow flex items-center gap-1">
+                    ❓ Como funciona
+                </button>
                 <a href="https://wa.me/258856113036?text=Ol%C3%A1%20Haulzao-2%21%20Preciso%20de%20ajuda%20com%20um%20transporte." target="_blank" class="bg-emerald-650 hover:bg-emerald-700 bg-emerald-600 text-white text-xs font-black px-3 py-2 rounded-lg transition shadow flex items-center gap-1">
                     💬 Suporte
                 </a>
@@ -56,6 +59,60 @@
         <button id="btn-location" class="absolute bottom-6 right-6 z-[1000] bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition">
             📍 Minha Posição
         </button>
+    </div>
+
+    <!-- MODAL TUTORIAL -->
+    <div id="tutorial-overlay" class="fixed inset-0 bg-black/70 z-[2000] hidden items-center justify-center px-4">
+        <div class="bg-slate-800 text-slate-100 rounded-2xl shadow-2xl max-w-sm w-full p-6 max-h-[85vh] overflow-y-auto">
+            <h2 class="text-xl font-black text-amber-500 mb-1">Como usar o Haulzao-2</h2>
+            <p class="text-xs text-slate-400 mb-5">Leva 30 segundos a entender 👇</p>
+
+            <div class="space-y-4">
+                <div class="flex gap-3">
+                    <span class="text-2xl">🗺️</span>
+                    <div>
+                        <p class="font-bold text-sm text-white">Vês os veículos perto de ti</p>
+                        <p class="text-xs text-slate-400">Cada bolinha no mapa é um condutor disponível AGORA, perto da tua localização.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <span class="text-2xl">🟠</span>
+                    <div>
+                        <p class="font-bold text-sm text-white">Cores dos marcadores</p>
+                        <p class="text-xs text-slate-400"><span class="text-orange-400 font-bold">Laranja</span> = Moto &nbsp;•&nbsp; <span class="text-green-400 font-bold">Verde</span> = Txopela &nbsp;•&nbsp; <span class="text-blue-400 font-bold">Azul</span> = Tu</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <span class="text-2xl">👆</span>
+                    <div>
+                        <p class="font-bold text-sm text-white">Clica num marcador</p>
+                        <p class="text-xs text-slate-400">Vais ver o nome do condutor, a placa, e a distância exacta até ti.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <span class="text-2xl">📞💬✉️</span>
+                    <div>
+                        <p class="font-bold text-sm text-white">Escolhe como falar com ele</p>
+                        <p class="text-xs text-slate-400">Botão verde = Ligar &nbsp;•&nbsp; Verde WhatsApp = Mensagem &nbsp;•&nbsp; Azul = SMS. Combinam directamente o preço e o local.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <span class="text-2xl">📍</span>
+                    <div>
+                        <p class="font-bold text-sm text-white">Activa o teu GPS</p>
+                        <p class="text-xs text-slate-400">Clica em "Minha Posição" para veres a distância real até cada condutor.</p>
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="fecharTutorial()" class="w-full mt-6 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-black py-3 rounded-xl shadow-lg active:scale-[0.98] transition-all">
+                Entendi, vamos lá! 🚀
+            </button>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -115,6 +172,22 @@
 
         localizarCliente();
         document.getElementById('btn-location').addEventListener('click', localizarCliente);
+
+        // --- TUTORIAL: aparece automaticamente na primeira visita ---
+        function abrirTutorial() {
+            const overlay = document.getElementById('tutorial-overlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+        function fecharTutorial() {
+            const overlay = document.getElementById('tutorial-overlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+            localStorage.setItem('haulzao_tutorial_visto', 'sim');
+        }
+        if (!localStorage.getItem('haulzao_tutorial_visto')) {
+            abrirTutorial();
+        }
 
         async function carregarMotoristas() {
             try {
