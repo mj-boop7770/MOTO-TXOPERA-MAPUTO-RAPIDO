@@ -25,7 +25,7 @@
         <div class="max-w-4xl mx-auto flex justify-between items-center">
             <div>
                 <h1 class="text-xl font-black tracking-tight">HAULZAO-2 MAPUTO</h1>
-                <p class="text-xs text-amber-100 font-medium">Motos & Txopelas em tempo real</p>
+                <p class="text-xs text-amber-100 font-medium">Motes & Txopelas em tempo real</p>
             </div>
             <div class="flex items-center gap-2">
                 <a href="https://wa.me/258856113036?text=Ol%C3%A1%20Haulzao-2%21%20Preciso%20de%20ajuda%20com%20um%20transporte." target="_blank" class="bg-emerald-650 hover:bg-emerald-700 bg-emerald-600 text-white text-xs font-black px-3 py-2 rounded-lg transition shadow flex items-center gap-1">
@@ -39,7 +39,7 @@
     </header>
 
     <div class="bg-white border-b border-slate-200 px-4 py-2 text-sm shadow-sm flex flex-wrap justify-between items-center gap-2">
-        <span class="text-slate-600 font-medium">💡 Clique num marcador para ligar ao motorista</span>
+        <span class="text-slate-600 font-medium">💡 Clique num marcador para ligar ou enviar mensagem</span>
         <div class="flex gap-4 text-xs font-semibold">
             <span class="flex items-center gap-1"><span class="w-3 h-3 bg-orange-500 rounded-full inline-block"></span> 🏍️ Moto</span>
             <span class="flex items-center gap-1"><span class="w-3 h-3 bg-green-500 rounded-full inline-block"></span> 🛺 Txopela</span>
@@ -67,7 +67,6 @@
             maxZoom: 19
         }).addTo(map);
 
-        // Formule Haversine pour calculer la distance réelle cachée sous le capot
         function calcularDistance(lat1, lon1, lat2, lon2) {
             if (!lat1 || !lon1 || !lat2 || !lon2) return "Distância desconhecida";
             const R = 6371;
@@ -134,6 +133,14 @@
                             ? calcularDistance(clientLat, clientLng, m.latitude, m.longitude)
                             : "Activa o teu GPS para ver a distância";
 
+                        // Message WhatsApp formaté pour ton futur bot
+                        const msgWhatsapp = encodeURIComponent(
+                            `Olá! Preciso de um transporte, por favor.\n\n📍 Destino: (Escreva para onde vai)\n📱 Contacto: ${m.telephone}`
+                        );
+
+                        // Message SMS brut par défaut
+                        const msgSMS = encodeURIComponent("Olá! Vi que estás disponível no Haulzao-2. Preciso de um transporte.");
+
                         const marker = L.circleMarker([m.latitude, m.longitude], {
                             radius: 12,
                             fillColor: cor,
@@ -143,13 +150,25 @@
                         }).addTo(map);
 
                         const popupContent = `
-                            <div class="p-1">
+                            <div class="p-1 w-[200px]">
                                 <h3 class="text-base font-bold flex items-center gap-1">${iconeEmoji} ${m.nom.toUpperCase()}</h3>
                                 <p class="text-xs text-slate-300 mt-1">Placa: <span class="bg-slate-700 px-1.5 py-0.5 rounded font-mono text-white text-[11px]">${m.plaque}</span></p>
                                 <p class="text-xs text-amber-400 font-semibold mt-1.5 mb-2">📍 ${textoDistancia}</p>
-                                <a href="tel:${m.telephone}" class="mt-3 block w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-sm py-2 px-3 rounded-lg shadow transition">
-                                    📞 Chamar: ${m.telephone}
-                                </a>
+                                
+                                <div class="flex flex-col gap-2 mt-3">
+                                    <a href="tel:${m.telephone}" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-xs py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1">
+                                        📞 Ligar para Condutor
+                                    </a>
+                                    
+                                    <div class="flex gap-2">
+                                        <a href="https://wa.me/${m.telephone}?text=${msgWhatsapp}" target="_blank" class="w-1/2 bg-green-500 hover:bg-green-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
+                                            💬 WhatsApp
+                                        </a>
+                                        <a href="sms:${m.telephone}?body=${msgSMS}" class="w-1/2 bg-blue-500 hover:bg-blue-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
+                                            ✉️ Enviar SMS
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         `;
                         marker.bindPopup(popupContent);
@@ -163,5 +182,4 @@
         setInterval(carregarMotoristas, 30000);
     </script>
 </body>
-        </html>
-        
+</html>
