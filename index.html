@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Haulzao-2 Maputo - Entrada Única</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#f59e0b">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col justify-between antialiased">
@@ -50,6 +53,13 @@
     </footer>
 
     <script>
+        // Enregistre le Service Worker pour transformer le site en app installable (PWA)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log('Service Worker registado com sucesso.'))
+                .catch(err => console.warn('Erro ao registar Service Worker:', err));
+        }
+
         // Petite sécurité pour que n'importe qui ne clique pas sur ton bouton de boss
         function acessarPainelBoss() {
             const senha = prompt("Introduza o código de acesso MUJOS OCTOPUS:");
