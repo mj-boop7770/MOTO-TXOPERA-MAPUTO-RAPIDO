@@ -46,10 +46,11 @@
 
     <div class="bg-white border-b border-slate-200 px-4 py-2 text-sm shadow-sm flex flex-wrap justify-between items-center gap-2">
         <span class="text-slate-600 font-medium">💡 Clique num marcador para ligar ou enviar mensagem</span>
-        <div class="flex gap-4 text-xs font-semibold">
+        <div class="flex gap-3 text-xs font-semibold flex-wrap">
             <span class="flex items-center gap-1"><span class="w-3 h-3 bg-orange-500 rounded-full inline-block"></span> 🏍️ Moto</span>
             <span class="flex items-center gap-1"><span class="w-3 h-3 bg-green-500 rounded-full inline-block"></span> 🛺 Txopela</span>
-            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-blue-500 rounded-full inline-block"></span> 🔵 Tu estás aqui</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-blue-500 rounded-full inline-block"></span> 🚗 Carro</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-violet-500 rounded-full inline-block"></span> 🟣 Tu estás aqui</span>
         </div>
     </div>
 
@@ -59,6 +60,18 @@
         <button id="btn-location" class="absolute bottom-6 right-6 z-[1000] bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 active:scale-95 transition">
             📍 Minha Posição
         </button>
+    </div>
+
+    <!-- MODAL GPS OBRIGATÓRIO -->
+    <div id="gps-overlay" class="fixed inset-0 bg-slate-900/95 z-[3000] hidden items-center justify-center px-4">
+        <div class="bg-slate-800 text-slate-100 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
+            <div class="text-5xl mb-3">📍</div>
+            <h2 class="text-lg font-black text-amber-500 mb-2">GPS necessário</h2>
+            <p class="text-sm text-slate-300 mb-5">O Haulzao-2 precisa da tua localização para te mostrar quem está perto de ti. Activa o GPS do telemóvel e permite o acesso quando o navegador pedir.</p>
+            <button onclick="localizarCliente()" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-black py-3 rounded-xl shadow-lg active:scale-[0.98] transition-all">
+                Tentar novamente 🔄
+            </button>
+        </div>
     </div>
 
     <!-- MODAL TUTORIAL -->
@@ -80,7 +93,7 @@
                     <span class="text-2xl">🟠</span>
                     <div>
                         <p class="font-bold text-sm text-white">Cores dos marcadores</p>
-                        <p class="text-xs text-slate-400"><span class="text-orange-400 font-bold">Laranja</span> = Moto &nbsp;•&nbsp; <span class="text-green-400 font-bold">Verde</span> = Txopela &nbsp;•&nbsp; <span class="text-blue-400 font-bold">Azul</span> = Tu</p>
+                        <p class="text-xs text-slate-400"><span class="text-orange-400 font-bold">Laranja</span> = Moto &nbsp;•&nbsp; <span class="text-green-400 font-bold">Verde</span> = Txopela &nbsp;•&nbsp; <span class="text-blue-400 font-bold">Azul</span> = Carro &nbsp;•&nbsp; <span class="text-violet-400 font-bold">Roxo</span> = Tu</p>
                     </div>
                 </div>
 
@@ -157,17 +170,45 @@
                     } else {
                         userMarker = L.circleMarker([clientLat, clientLng], {
                             radius: 9,
-                            fillColor: "#2563eb",
+                            fillColor: "#8b5cf6",
                             color: "#ffffff",
                             weight: 3,
                             fillOpacity: 1
                         }).addTo(map).bindPopup("<b style='color:#ffffff;'>Tu estás aqui</b>");
                     }
                     carregarMotoristas();
+                    esconderGpsObrigatorio();
                 }, error => {
                     console.warn("GPS desativado pelo cliente.");
+                    mostrarGpsObrigatorio();
                 }, { enableHighAccuracy: true });
+            } else {
+                mostrarGpsObrigatorio();
             }
+        }
+
+        // --- GPS OBRIGATÓRIO: bloqueia o uso até o cliente activar a localização ---
+        function mostrarGpsObrigatorio() {
+            const overlay = document.getElementById('gps-overlay');
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+        }
+        function esconderGpsObrigatorio() {
+            const overlay = document.getElementById('gps-overlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+        }
+
+        // --- Regista (sem identificar o cliente) que um condutor foi contactado ---
+        function registrarContato(idDoc, tipoContato) {
+            try {
+                fetch('/api/enregistrer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    keepalive: true,
+                    body: JSON.stringify({ action: 'contato', id_doc: idDoc, tipo_contato: tipoContato })
+                }).catch(() => {});
+            } catch (e) {}
         }
 
         localizarCliente();
@@ -202,8 +243,8 @@
 
                 motoristas.forEach(m => {
                     if (m.latitude && m.longitude) {
-                        const cor = m.tipo === "moto" ? "#f97316" : "#22c55e";
-                        const iconeEmoji = m.tipo === "moto" ? "🏍️" : "🛺";
+                        const cor = m.tipo === "moto" ? "#f97316" : m.tipo === "carro" ? "#3b82f6" : "#22c55e";
+                        const iconeEmoji = m.tipo === "moto" ? "🏍️" : m.tipo === "carro" ? "🚗" : "🛺";
 
                         const textoDistancia = (clientLat && clientLng) 
                             ? calcularDistance(clientLat, clientLng, m.latitude, m.longitude)
@@ -225,6 +266,8 @@
                             fillOpacity: 0.9
                         }).addTo(map);
 
+                        const idSeguro = m.id_doc || m.telephone;
+
                         const popupContent = `
                             <div class="p-1 w-[200px]">
                                 <h3 class="text-base font-bold flex items-center gap-1">${iconeEmoji} ${m.nom.toUpperCase()}</h3>
@@ -232,15 +275,15 @@
                                 <p class="text-xs text-amber-400 font-semibold mt-1.5 mb-2">📍 ${textoDistancia}</p>
                                 
                                 <div class="flex flex-col gap-2 mt-3">
-                                    <a href="tel:${m.telephone}" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-xs py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1">
+                                    <a href="tel:${m.telephone}" onclick="registrarContato('${idSeguro}','ligar')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-xs py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1">
                                         📞 Ligar para Condutor
                                     </a>
                                     
                                     <div class="flex gap-2">
-                                        <a href="https://wa.me/${m.telephone}?text=${msgWhatsapp}" target="_blank" class="w-1/2 bg-green-500 hover:bg-green-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
+                                        <a href="https://wa.me/${m.telephone}?text=${msgWhatsapp}" onclick="registrarContato('${idSeguro}','whatsapp')" target="_blank" class="w-1/2 bg-green-500 hover:bg-green-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
                                             💬 WhatsApp
                                         </a>
-                                        <a href="sms:${m.telephone}?body=${msgSMS}" class="w-1/2 bg-blue-500 hover:bg-blue-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
+                                        <a href="sms:${m.telephone}?body=${msgSMS}" onclick="registrarContato('${idSeguro}','sms')" class="w-1/2 bg-blue-500 hover:bg-blue-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
                                             ✉️ Enviar SMS
                                         </a>
                                     </div>
