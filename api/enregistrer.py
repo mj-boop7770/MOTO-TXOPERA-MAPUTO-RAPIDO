@@ -59,8 +59,12 @@ class handler(BaseHTTPRequestHandler):
                     self.end_headers()
                     return
                 
-                # Mise à jour dynamique du statut dans Firebase
-                db.collection("motoristas").document(str(id_doc)).update({"status": novo_status})
+                # Mise à jour dynâmica do status + refresca o timestamp
+                # (assim um "Repor Disponível" manual também reinicia o cronómetro das 2h)
+                db.collection("motoristas").document(str(id_doc)).update({
+                    "status": novo_status,
+                    "atualizado_em": firestore.SERVER_TIMESTAMP
+                })
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
@@ -70,12 +74,38 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "sucesso", "motorista_status": novo_status}).encode('utf-8'))
                 return
 
-            # ACTION C : ENREGISTREMENT INITIAL CHAUFFEUR
+            # ACTION D : REGISTO DE CONTACTO (estatística, sem identificar o cliente)
+            if data.get("action") == "contato":
+                id_doc = data.get("id_doc")
+                tipo_contato = data.get("tipo_contato", "outro")
+                if tipo_contato not in ("ligar", "whatsapp", "sms"):
+                    tipo_contato = "outro"
+                if not id_doc:
+                    self.send_response(400)
+                    self.end_headers()
+                    return
+
+                db.collection("motoristas").document(str(id_doc)).update({
+                    "contactos_total": firestore.Increment(1),
+                    f"contactos_{tipo_contato}": firestore.Increment(1)
+                })
+
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "contato_registado"}).encode('utf-8'))
+                return
+
+            # ACTION C : ENREGISTREMENT INITIAL CHAUFFEUR (ou actualização se já existir)
             telephone = data.get("telephone")
             if not telephone:
                 self.send_response(400)
                 self.end_headers()
                 return
+
+            doc_ref = db.collection("motoristas").document(str(telephone))
+            doc_existe = doc_ref.get().exists
 
             moto_data = {
                 "tipo": data.get("tipo", "moto"),
@@ -84,10 +114,21 @@ class handler(BaseHTTPRequestHandler):
                 "plaque": data.get("plaque", "Sem Placa"),
                 "latitude": float(data.get("latitude")),
                 "longitude": float(data.get("longitude")),
-                "status": "disponivel"
+                "status": "disponivel",
+                "atualizado_em": firestore.SERVER_TIMESTAMP
             }
 
-            db.collection("motoristas").document(str(telephone)).set(moto_data)
+            # Só inicializa os contadores de contacto na primeira vez;
+            # se o condutor já existia, não apagamos o histórico dele.
+            if not doc_existe:
+                moto_data.update({
+                    "contactos_total": 0,
+                    "contactos_ligar": 0,
+                    "contactos_whatsapp": 0,
+                    "contactos_sms": 0
+                })
+
+            doc_ref.set(moto_data, merge=True)
 
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
@@ -101,4 +142,3 @@ class handler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({"erreur": str(e)}).encode('utf-8'))
-            
