@@ -33,7 +33,7 @@
             </ol>
         </div>
 
-        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl">
+        <div id="bloco-formulario" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl">
             <form id="form-motorista" class="space-y-4">
                 <div>
                     <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Tipo de Transporte</label>
@@ -61,10 +61,21 @@
 
                 <div class="pt-2">
                     <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-black py-3.5 px-4 rounded-xl shadow-lg active:scale-[0.98] transition-all uppercase tracking-wider text-sm">
-                        🚀 Enregistrer dans le système
+                        🚀 Registar no sistema
                     </button>
                 </div>
             </form>
+        </div>
+
+        <!-- ECRÃ "ONLINE" — aparece depois do registo, mantém o condutor visível -->
+        <div id="bloco-online" class="hidden bg-slate-800 border border-emerald-700 p-6 rounded-2xl shadow-xl text-center">
+            <div class="text-5xl mb-3">🟢</div>
+            <h2 class="text-lg font-black text-emerald-400 mb-2">Estás online!</h2>
+            <p class="text-sm text-slate-300 mb-4">Deixa esta página aberta para continuares visível para os clientes. A tua posição é atualizada automaticamente.</p>
+            <p id="ultima-atualizacao" class="text-xs text-slate-500 font-mono mb-5">A aguardar primeira atualização...</p>
+            <button onclick="pararEVoltar()" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition">
+                Terminar serviço e sair
+            </button>
         </div>
     </main>
 
@@ -73,6 +84,10 @@
     </footer>
 
     <script>
+        const INTERVALO_HEARTBEAT_MS = 10 * 60 * 1000; // 10 minutos
+        let idDocCondutor = null;
+        let heartbeatTimer = null;
+
         document.getElementById('form-motorista').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -96,8 +111,8 @@
                         });
 
                         if (response.ok) {
-                            alert("Sucesso! A tua posição foi gravada.");
-                            window.location.href = "index.html";
+                            idDocCondutor = dados.telephone;
+                            entrarModoOnline();
                         } else {
                             const errData = await response.text();
                             alert("Erro ao gravar: " + errData);
@@ -112,7 +127,52 @@
                 alert("O teu telefone não suporta Geolocalização.");
             }
         });
+
+        // --- Passa para o ecrã "online" e arranca o heartbeat automático ---
+        function entrarModoOnline() {
+            document.getElementById('bloco-formulario').classList.add('hidden');
+            document.getElementById('bloco-online').classList.remove('hidden');
+
+            enviarHeartbeat(); // primeiro heartbeat imediato
+            heartbeatTimer = setInterval(enviarHeartbeat, INTERVALO_HEARTBEAT_MS);
+        }
+
+        // --- Reenvia posição + "sinal de vida" sem tocar no status (em_viagem fica intacto) ---
+        function enviarHeartbeat() {
+            if (!idDocCondutor) return;
+            if (!("geolocation" in navigator)) return;
+
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                try {
+                    await fetch('/api/enregistrer', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        keepalive: true,
+                        body: JSON.stringify({
+                            action: 'assign',
+                            id_doc: idDocCondutor,
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                            // status omitido de propósito: não sobrescreve "em_viagem"
+                        })
+                    });
+                    const agora = new Date();
+                    document.getElementById('ultima-atualizacao').textContent =
+                        "Última atualização: " + agora.toLocaleTimeString('pt-PT');
+                } catch (err) {
+                    console.warn("Erro no heartbeat:", err);
+                }
+            }, (err) => {
+                console.warn("Erro de GPS no heartbeat:", err.message);
+            }, { enableHighAccuracy: true });
+        }
+
+        function pararEVoltar() {
+            if (heartbeatTimer) clearInterval(heartbeatTimer);
+            window.location.href = "index.html";
+        }
     </script>
 </body>
-    </html>
+</html>
+
     
