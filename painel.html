@@ -286,7 +286,7 @@
         // ACTION 1 : ENVOYER LE MESSAGE D'APPROCHE SANS TOUCHER AU STATUT FIREBASE
         function enviarPropostaWhatsApp(nome, telefone) {
             const mensagem = `Olá *${nome.toUpperCase()}*, estás disponível para uma corrida na zona de *${zoneActuelleRecherche.toUpperCase()}* neste momento?`;
-            const url = `https://wa.me/${telefone.replace(/\s+/g, '')}?text=${encodeURIComponent(mensagem)}`;
+            const url = `https://wa.me/${telefone.replace(/\s+/g, '').replace('+', '')}?text=${encodeURIComponent(mensagem)}`;
             window.open(url, '_blank');
         }
 
@@ -367,4 +367,5 @@
     </script>
 </body>
                 </html>
-                
+
+    
