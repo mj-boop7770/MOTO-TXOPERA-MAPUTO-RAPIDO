@@ -62,6 +62,19 @@
         </button>
     </div>
 
+    <!-- BANNIÈRE DE SUIVI DO PEDIDO -->
+    <div id="pedido-banner" class="hidden fixed bottom-0 left-0 right-0 z-[2500] bg-slate-800 border-t border-amber-600 shadow-2xl px-4 py-3">
+        <div class="max-w-md mx-auto flex items-center justify-between gap-3">
+            <div class="flex-1">
+                <p id="pedido-titulo" class="text-sm font-black text-amber-400">A aguardar resposta do condutor...</p>
+                <p id="pedido-subtitulo" class="text-xs text-slate-400">O condutor foi notificado.</p>
+            </div>
+            <button id="pedido-btn-cancelar" onclick="cancelarPedido()" class="bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition shrink-0">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
     <!-- MODAL GPS OBRIGATÓRIO -->
     <div id="gps-overlay" class="fixed inset-0 bg-slate-900/95 z-[3000] hidden items-center justify-center px-4">
         <div class="bg-slate-800 text-slate-100 rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center">
@@ -211,6 +224,110 @@
             } catch (e) {}
         }
 
+        // --- PARTILHA DE POSIÇÃO COM O CONDUTOR CONTACTADO ---
+        const INTERVALO_PEDIDO_MS = 15000; // 15 segundos
+        let idDocContactado = null;
+        let intervaloPedido = null;
+        let intervaloVerificarPedido = null;
+
+        function iniciarPedidoCliente(idDoc) {
+            if (!clientLat || !clientLng) return; // GPS obrigatório já garante isto, mas por segurança
+
+            // Se já havia um pedido activo noutro condutor, para-o primeiro
+            if (idDocContactado && idDocContactado !== idDoc) {
+                pararPartilhaAnterior();
+            }
+
+            idDocContactado = idDoc;
+
+            fetch('/api/enregistrer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'pedido_cliente', id_doc: idDoc, cliente_lat: clientLat, cliente_lng: clientLng })
+            }).catch(() => {});
+
+            mostrarBannerPedido('pendente');
+
+            if (intervaloPedido) clearInterval(intervaloPedido);
+            intervaloPedido = setInterval(() => {
+                if (!idDocContactado || !clientLat || !clientLng) return;
+                fetch('/api/enregistrer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    keepalive: true,
+                    body: JSON.stringify({ action: 'atualizar_pedido_cliente', id_doc: idDocContactado, cliente_lat: clientLat, cliente_lng: clientLng })
+                }).catch(() => {});
+            }, INTERVALO_PEDIDO_MS);
+
+            if (intervaloVerificarPedido) clearInterval(intervaloVerificarPedido);
+            intervaloVerificarPedido = setInterval(verificarEstadoPedido, INTERVALO_PEDIDO_MS);
+        }
+
+        async function verificarEstadoPedido() {
+            if (!idDocContactado) return;
+            try {
+                const response = await fetch('/api/listar?id_doc=' + idDocContactado);
+                if (!response.ok) return;
+                const dados = await response.json();
+                const pedido = dados.cliente_pedido;
+
+                if (!pedido) return;
+
+                if (pedido.status === 'aceite') {
+                    mostrarBannerPedido('aceite');
+                } else if (pedido.status === 'recusado') {
+                    mostrarBannerPedido('recusado');
+                    pararPartilhaAnterior();
+                }
+            } catch (err) {
+                console.warn('Erro ao verificar pedido:', err);
+            }
+        }
+
+        function mostrarBannerPedido(estado) {
+            const banner = document.getElementById('pedido-banner');
+            const titulo = document.getElementById('pedido-titulo');
+            const subtitulo = document.getElementById('pedido-subtitulo');
+            const btnCancelar = document.getElementById('pedido-btn-cancelar');
+
+            banner.classList.remove('hidden');
+
+            if (estado === 'pendente') {
+                titulo.textContent = '⏳ A aguardar resposta do condutor...';
+                subtitulo.textContent = 'O condutor foi notificado e a tua localização está a ser partilhada.';
+                btnCancelar.classList.remove('hidden');
+                btnCancelar.textContent = 'Cancelar';
+            } else if (estado === 'aceite') {
+                titulo.textContent = '🟢 O condutor aceitou! A caminho.';
+                subtitulo.textContent = 'Segue a distância no marcador dele no mapa.';
+                btnCancelar.classList.add('hidden');
+            } else if (estado === 'recusado') {
+                titulo.textContent = '❌ O condutor não está disponível.';
+                subtitulo.textContent = 'Escolhe outro condutor no mapa.';
+                btnCancelar.classList.add('hidden');
+                setTimeout(() => banner.classList.add('hidden'), 4000);
+            }
+        }
+
+        function cancelarPedido() {
+            if (!idDocContactado) return;
+            fetch('/api/enregistrer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'cancelar_pedido', id_doc: idDocContactado })
+            }).catch(() => {});
+            pararPartilhaAnterior();
+            document.getElementById('pedido-banner').classList.add('hidden');
+        }
+
+        function pararPartilhaAnterior() {
+            if (intervaloPedido) clearInterval(intervaloPedido);
+            if (intervaloVerificarPedido) clearInterval(intervaloVerificarPedido);
+            intervaloPedido = null;
+            intervaloVerificarPedido = null;
+            idDocContactado = null;
+        }
+
         localizarCliente();
         document.getElementById('btn-location').addEventListener('click', localizarCliente);
 
@@ -275,31 +392,5 @@
                                 <p class="text-xs text-amber-400 font-semibold mt-1.5 mb-2">📍 ${textoDistancia}</p>
                                 
                                 <div class="flex flex-col gap-2 mt-3">
-                                    <a href="tel:${m.telephone}" onclick="registrarContato('${idSeguro}','ligar')" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-xs py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1">
-                                        📞 Ligar para Condutor
-                                    </a>
-                                    
-                                    <div class="flex gap-2">
-                                        <a href="https://wa.me/${m.telephone.replace('+','')}?text=${msgWhatsapp}" onclick="registrarContato('${idSeguro}','whatsapp')" target="_blank" class="w-1/2 bg-green-500 hover:bg-green-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
-                                            💬 WhatsApp
-                                        </a>
-                                        <a href="sms:${m.telephone}?body=${msgSMS}" onclick="registrarContato('${idSeguro}','sms')" class="w-1/2 bg-blue-500 hover:bg-blue-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
-                                            ✉️ Enviar SMS
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        marker.bindPopup(popupContent);
-                    }
-                });
-            } catch (err) {
-                console.error("Erro ao carregar dados do Haulzao-2:", err);
-            }
-        }
-
-        setInterval(carregarMotoristas, 30000);
-    </script>
-</body>
-                </html>
-                                                      
+                                    <a href="tel:${m.telephone}" onclick="registrarContato('${idSeguro}','ligar'); iniciarPedidoCliente('${idSeguro}');" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-xs py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1">
+                                        📞 Ligar p
