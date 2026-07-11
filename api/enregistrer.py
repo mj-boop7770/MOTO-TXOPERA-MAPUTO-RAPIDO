@@ -16,6 +16,14 @@ if firebase_config and not firebase_admin._apps:
         print(f"Erreur d'initialisation Firebase : {e}")
 
 class handler(BaseHTTPRequestHandler):
+    def _responder(self, status_code, payload):
+        self.send_response(status_code)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.end_headers()
+        self.wfile.write(json.dumps(payload).encode('utf-8'))
+
     def do_POST(self):
         try:
             content_length = int(self.headers['Content-Length'])
@@ -23,10 +31,7 @@ class handler(BaseHTTPRequestHandler):
             data = json.loads(post_data.decode('utf-8'))
 
             if not data:
-                self.send_response(400)
-                self.send_header('Content-type', 'application/json')
-                self.end_headers()
-                self.wfile.write(json.dumps({"erreur": "Nenhum dado recebido"}).encode('utf-8'))
+                self._responder(400, {"erreur": "Nenhum dado recebido"})
                 return
 
             db = firestore.client()
@@ -35,18 +40,11 @@ class handler(BaseHTTPRequestHandler):
             if data.get("action") == "delete":
                 id_doc = data.get("id_doc")
                 if not id_doc:
-                    self.send_response(400)
-                    self.end_headers()
+                    self._responder(400, {"erreur": "id_doc em falta"})
                     return
-                
-                db.collection("motoristas").document(str(id_doc)).delete()
 
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "deletado"}).encode('utf-8'))
+                db.collection("motoristas").document(str(id_doc)).delete()
+                self._responder(200, {"status": "deletado"})
                 return
 
             # ACTION B : ATTRIBUTION DE COURSE (DISPATCH) + HEARTBEAT DO CONDUTOR
@@ -54,23 +52,17 @@ class handler(BaseHTTPRequestHandler):
                 id_doc = data.get("id_doc")
 
                 if not id_doc:
-                    self.send_response(400)
-                    self.end_headers()
+                    self._responder(400, {"erreur": "id_doc em falta"})
                     return
 
-                # Dados a atualizar: timestamp SEMPRE atualizado (é o "heartbeat")
                 update_data = {
                     "atualizado_em": firestore.SERVER_TIMESTAMP
                 }
 
-                # O status só é alterado se for explicitamente enviado.
-                # Assim um heartbeat automático do condutor (sem "status") NUNCA
-                # apaga um status "em_viagem" definido pelo admin no painel.
                 novo_status = data.get("status")
                 if novo_status:
                     update_data["status"] = novo_status
 
-                # Se o heartbeat vier com posição GPS atualizada, guarda-a também.
                 latitude = data.get("latitude")
                 longitude = data.get("longitude")
                 if latitude is not None and longitude is not None:
@@ -81,13 +73,7 @@ class handler(BaseHTTPRequestHandler):
                         pass
 
                 db.collection("motoristas").document(str(id_doc)).update(update_data)
-
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "sucesso"}).encode('utf-8'))
+                self._responder(200, {"status": "sucesso"})
                 return
 
             # ACTION D : REGISTO DE CONTACTO (estatística, sem identificar o cliente)
@@ -97,8 +83,7 @@ class handler(BaseHTTPRequestHandler):
                 if tipo_contato not in ("ligar", "whatsapp", "sms"):
                     tipo_contato = "outro"
                 if not id_doc:
-                    self.send_response(400)
-                    self.end_headers()
+                    self._responder(400, {"erreur": "id_doc em falta"})
                     return
 
                 db.collection("motoristas").document(str(id_doc)).update({
@@ -106,36 +91,142 @@ class handler(BaseHTTPRequestHandler):
                     f"contactos_{tipo_contato}": firestore.Increment(1)
                 })
 
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({"status": "contato_registado"}).encode('utf-8'))
+                self._responder(200, {"status": "contato_registado"})
                 return
 
-            # ACTION C : ENREGISTREMENT INITIAL CHAUFFEUR (ou actualização se já existir)
+            # ACTION E : CLIENTE CONTACTA UM CONDUTOR -> ABRE PEDIDO PENDENTE
+            if data.get("action") == "pedido_cliente":
+                id_doc = data.get("id_doc")
+                cliente_lat = data.get("cliente_lat")
+                cliente_lng = data.get("cliente_lng")
+
+                if not id_doc or cliente_lat is None or cliente_lng is None:
+                    self._responder(400, {"erreur": "Dados do pedido incompletos"})
+                    return
+
+                try:
+                    cliente_lat = float(cliente_lat)
+                    cliente_lng = float(cliente_lng)
+                except (TypeError, ValueError):
+                    self._responder(400, {"erreur": "Coordenadas inválidas"})
+                    return
+
+                db.collection("motoristas").document(str(id_doc)).update({
+                    "cliente_pedido": {
+                        "status": "pendente",
+                        "cliente_lat": cliente_lat,
+                        "cliente_lng": cliente_lng,
+                        "atualizado_em": firestore.SERVER_TIMESTAMP
+                    }
+                })
+                self._responder(200, {"status": "pedido_criado"})
+                return
+
+            # ACTION F : CLIENTE ATUALIZA A SUA POSIÇÃO ENQUANTO PARTILHA (heartbeat do cliente)
+            if data.get("action") == "atualizar_pedido_cliente":
+                id_doc = data.get("id_doc")
+                cliente_lat = data.get("cliente_lat")
+                cliente_lng = data.get("cliente_lng")
+
+                if not id_doc or cliente_lat is None or cliente_lng is None:
+                    self._responder(400, {"erreur": "Dados incompletos"})
+                    return
+
+                try:
+                    cliente_lat = float(cliente_lat)
+                    cliente_lng = float(cliente_lng)
+                except (TypeError, ValueError):
+                    self._responder(400, {"erreur": "Coordenadas inválidas"})
+                    return
+
+                db.collection("motoristas").document(str(id_doc)).update({
+                    "cliente_pedido.cliente_lat": cliente_lat,
+                    "cliente_pedido.cliente_lng": cliente_lng,
+                    "cliente_pedido.atualizado_em": firestore.SERVER_TIMESTAMP
+                })
+                self._responder(200, {"status": "posicao_atualizada"})
+                return
+
+            # ACTION G : CONDUTOR RESPONDE (ACEITAR OU RECUSAR)
+            if data.get("action") == "responder_pedido":
+                id_doc = data.get("id_doc")
+                resposta = data.get("resposta")
+
+                if not id_doc or resposta not in ("aceite", "recusado"):
+                    self._responder(400, {"erreur": "Resposta inválida"})
+                    return
+
+                update_data = {
+                    "cliente_pedido.status": resposta,
+                    "cliente_pedido.atualizado_em": firestore.SERVER_TIMESTAMP
+                }
+
+                # Se aceite, o condutor sai da lista de disponíveis (deixa de ser encontrado)
+                if resposta == "aceite":
+                    update_data["status"] = "em_viagem"
+
+                db.collection("motoristas").document(str(id_doc)).update(update_data)
+                self._responder(200, {"status": "resposta_registada"})
+                return
+
+            # ACTION H : CONDUTOR TERMINA A CORRIDA
+            if data.get("action") == "terminar_corrida":
+                id_doc = data.get("id_doc")
+                if not id_doc:
+                    self._responder(400, {"erreur": "id_doc em falta"})
+                    return
+
+                db.collection("motoristas").document(str(id_doc)).update({
+                    "status": "disponivel",
+                    "cliente_pedido": firestore.DELETE_FIELD
+                })
+                self._responder(200, {"status": "corrida_terminada"})
+                return
+
+            # ACTION I : CLIENTE CANCELA O PEDIDO ANTES DE RESPOSTA (só se ainda pendente)
+            if data.get("action") == "cancelar_pedido":
+                id_doc = data.get("id_doc")
+                if not id_doc:
+                    self._responder(400, {"erreur": "id_doc em falta"})
+                    return
+
+                doc_ref = db.collection("motoristas").document(str(id_doc))
+                doc = doc_ref.get()
+                if doc.exists:
+                    pedido = doc.to_dict().get("cliente_pedido")
+                    if pedido and pedido.get("status") == "pendente":
+                        doc_ref.update({"cliente_pedido": firestore.DELETE_FIELD})
+
+                self._responder(200, {"status": "pedido_cancelado"})
+                return
+
+            # ACTION C (fallback) : REGISTO INICIAL DO CONDUTOR (ou atualização se já existir)
             telephone = data.get("telephone")
             if not telephone:
-                self.send_response(400)
-                self.end_headers()
+                self._responder(400, {"erreur": "telephone em falta"})
                 return
 
             doc_ref = db.collection("motoristas").document(str(telephone))
             doc_existe = doc_ref.get().exists
+
+            try:
+                lat = float(data.get("latitude"))
+                lng = float(data.get("longitude"))
+            except (TypeError, ValueError):
+                self._responder(400, {"erreur": "Coordenadas GPS inválidas ou em falta"})
+                return
 
             moto_data = {
                 "tipo": data.get("tipo", "moto"),
                 "nom": data.get("nom", "Anonimo"),
                 "telephone": str(telephone),
                 "plaque": data.get("plaque", "Sem Placa"),
-                "latitude": float(data.get("latitude")),
-                "longitude": float(data.get("longitude")),
+                "latitude": lat,
+                "longitude": lng,
                 "status": "disponivel",
                 "atualizado_em": firestore.SERVER_TIMESTAMP
             }
 
-            # Só inicializa os contadores de contacto na primeira vez;
-            # se o condutor já existia, não apagamos o histórico dele.
             if not doc_existe:
                 moto_data.update({
                     "contactos_total": 0,
@@ -145,17 +236,8 @@ class handler(BaseHTTPRequestHandler):
                 })
 
             doc_ref.set(moto_data, merge=True)
-
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
-            self.end_headers()
-            self.wfile.write(json.dumps({"status": "sucesso"}).encode('utf-8'))
+            self._responder(200, {"status": "sucesso"})
 
         except Exception as e:
-            self.send_response(500)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(json.dumps({"erreur": str(e)}).encode('utf-8'))
-            
+            self._responder(500, {"erreur": str(e)})
+                
