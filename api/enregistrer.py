@@ -49,29 +49,45 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "deletado"}).encode('utf-8'))
                 return
 
-            # ACTION B : ATTRIBUTION DE COURSE (DISPATCH)
+            # ACTION B : ATTRIBUTION DE COURSE (DISPATCH) + HEARTBEAT DO CONDUTOR
             if data.get("action") == "assign":
                 id_doc = data.get("id_doc")
-                novo_status = data.get("status", "em_viagem") # "em_viagem" ou "disponivel" pour le reset
-                
+
                 if not id_doc:
                     self.send_response(400)
                     self.end_headers()
                     return
-                
-                # Mise à jour dynâmica do status + refresca o timestamp
-                # (assim um "Repor Disponível" manual também reinicia o cronómetro das 2h)
-                db.collection("motoristas").document(str(id_doc)).update({
-                    "status": novo_status,
+
+                # Dados a atualizar: timestamp SEMPRE atualizado (é o "heartbeat")
+                update_data = {
                     "atualizado_em": firestore.SERVER_TIMESTAMP
-                })
+                }
+
+                # O status só é alterado se for explicitamente enviado.
+                # Assim um heartbeat automático do condutor (sem "status") NUNCA
+                # apaga um status "em_viagem" definido pelo admin no painel.
+                novo_status = data.get("status")
+                if novo_status:
+                    update_data["status"] = novo_status
+
+                # Se o heartbeat vier com posição GPS atualizada, guarda-a também.
+                latitude = data.get("latitude")
+                longitude = data.get("longitude")
+                if latitude is not None and longitude is not None:
+                    try:
+                        update_data["latitude"] = float(latitude)
+                        update_data["longitude"] = float(longitude)
+                    except (TypeError, ValueError):
+                        pass
+
+                db.collection("motoristas").document(str(id_doc)).update(update_data)
 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
                 self.end_headers()
-                self.wfile.write(json.dumps({"status": "sucesso", "motorista_status": novo_status}).encode('utf-8'))
+                self.wfile.write(json.dumps({"status": "sucesso"}).encode('utf-8'))
                 return
 
             # ACTION D : REGISTO DE CONTACTO (estatística, sem identificar o cliente)
@@ -142,3 +158,4 @@ class handler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({"erreur": str(e)}).encode('utf-8'))
+            
