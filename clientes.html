@@ -280,7 +280,7 @@
                                     </a>
                                     
                                     <div class="flex gap-2">
-                                        <a href="https://wa.me/${m.telephone}?text=${msgWhatsapp}" onclick="registrarContato('${idSeguro}','whatsapp')" target="_blank" class="w-1/2 bg-green-500 hover:bg-green-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
+                                        <a href="https://wa.me/${m.telephone.replace('+','')}?text=${msgWhatsapp}" onclick="registrarContato('${idSeguro}','whatsapp')" target="_blank" class="w-1/2 bg-green-500 hover:bg-green-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
                                             💬 WhatsApp
                                         </a>
                                         <a href="sms:${m.telephone}?body=${msgSMS}" onclick="registrarContato('${idSeguro}','sms')" class="w-1/2 bg-blue-500 hover:bg-blue-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
@@ -301,4 +301,5 @@
         setInterval(carregarMotoristas, 30000);
     </script>
 </body>
-</html>
+                </html>
+                                                      
