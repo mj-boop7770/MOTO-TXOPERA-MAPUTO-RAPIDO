@@ -393,4 +393,29 @@
                                 
                                 <div class="flex flex-col gap-2 mt-3">
                                     <a href="tel:${m.telephone}" onclick="registrarContato('${idSeguro}','ligar'); iniciarPedidoCliente('${idSeguro}');" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-xs py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1">
-                                        📞 Ligar p
+                                          📞 Ligar para Condutor
+                                    </a>
+                                    
+                                    <div class="flex gap-2">
+                                        <a href="https://wa.me/${m.telephone.replace('+','')}?text=${msgWhatsapp}" onclick="registrarContato('${idSeguro}','whatsapp'); iniciarPedidoCliente('${idSeguro}');" target="_blank" class="w-1/2 bg-green-500 hover:bg-green-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
+                                            💬 WhatsApp
+                                        </a>
+                                        <a href="sms:${m.telephone}?body=${msgSMS}" onclick="registrarContato('${idSeguro}','sms'); iniciarPedidoCliente('${idSeguro}');" class="w-1/2 bg-blue-500 hover:bg-blue-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
+                                            ✉️ Enviar SMS
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        marker.bindPopup(popupContent);
+                    }
+                });
+            } catch (err) {
+                console.error("Erro ao carregar dados do Haulzao-2:", err);
+            }
+        }
+
+        setInterval(carregarMotoristas, 30000);
+    </script>
+</body>
+</html>
