@@ -127,12 +127,26 @@
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCuwng4WSXIzf0XqMIq2Sq_vMFSh6icS40",
+            authDomain: "haulzao-2.firebaseapp.com",
+            databaseURL: "https://haulzao-2-default-rtdb.firebaseio.com",
+            projectId: "haulzao-2",
+            storageBucket: "haulzao-2.firebasestorage.app",
+            messagingSenderId: "1075221128018",
+            appId: "1:1075221128018:web:39e694d3fb94858894508b"
+        };
+        const firebaseApp = initializeApp(firebaseConfig);
+        const db = getFirestore(firebaseApp);
+
         const INTERVALO_HEARTBEAT_MS = 10 * 60 * 1000; // 10 minutos
-        const INTERVALO_PEDIDO_MS = 8000; // 8 segundos: verifica pedidos e atualiza corrida
         let idDocCondutor = null;
+        let unsubscribePedido = null;
         let heartbeatTimer = null;
-        let intervaloPedidoTimer = null;
         let miniMap = null;
         let marcadorCliente = null;
         let marcadorCondutor = null;
@@ -277,8 +291,40 @@
             enviarHeartbeat(); // primeiro heartbeat imediato
             heartbeatTimer = setInterval(enviarHeartbeat, INTERVALO_HEARTBEAT_MS);
 
-            verificarPedido(); // primeira verificação imediata
-            intervaloPedidoTimer = setInterval(verificarPedido, INTERVALO_PEDIDO_MS);
+            iniciarEscutaPedido(); // escuta em tempo real (substitui o antigo polling)
+        }
+
+        // --- Escuta em tempo real o próprio documento para saber de pedidos e corridas ---
+        function iniciarEscutaPedido() {
+            if (!idDocCondutor) return;
+            if (unsubscribePedido) unsubscribePedido();
+
+            const refCondutor = doc(db, "motoristas", idDocCondutor);
+            unsubscribePedido = onSnapshot(refCondutor, (docSnap) => {
+                if (!docSnap.exists()) return;
+                const pedido = docSnap.data().cliente_pedido;
+
+                if (!pedido) {
+                    document.getElementById('bloco-pedido').classList.add('hidden');
+                    document.getElementById('bloco-corrida').classList.add('hidden');
+                    pedidoJaNotificado = false;
+                    return;
+                }
+
+                if (pedido.status === 'pendente' && !pedidoJaNotificado) {
+                    pedidoJaNotificado = true;
+                    document.getElementById('bloco-pedido').classList.remove('hidden');
+                    document.getElementById('bloco-corrida').classList.add('hidden');
+                }
+
+                if (pedido.status === 'aceite') {
+                    document.getElementById('bloco-pedido').classList.add('hidden');
+                    document.getElementById('bloco-corrida').classList.remove('hidden');
+                    atualizarMiniMapa(pedido.cliente_lat, pedido.cliente_lng);
+                }
+            }, (err) => {
+                console.error("Erro na escuta em tempo real:", err);
+            });
         }
 
         // --- Reenvia posição + "sinal de vida" sem tocar no status (em_viagem fica intacto) ---
@@ -324,134 +370,11 @@
             if (!confirmado) return;
 
             if (heartbeatTimer) clearInterval(heartbeatTimer);
-            if (intervaloPedidoTimer) clearInterval(intervaloPedidoTimer);
+            if (unsubscribePedido) { unsubscribePedido(); unsubscribePedido = null; }
 
             if (idDocCondutor) {
                 try {
                     await fetch('/api/enregistrer', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'assign', id_doc: idDocCondutor, status: 'offline' })
-                    });
-                } catch (err) {
-                    console.warn('Erro ao marcar offline:', err);
-                }
-            }
-
-            localStorage.removeItem('haulzao_condutor_id');
-            window.location.href = "index.html";
-        }
-
-        // --- Verifica periodicamente se há um pedido de cliente pendente ou em curso ---
-        async function verificarPedido() {
-            if (!idDocCondutor) return;
-            try {
-                const response = await fetch('/api/listar?id_doc=' + encodeURIComponent(idDocCondutor));
-                if (!response.ok) return;
-                const dados = await response.json();
-                const pedido = dados.cliente_pedido;
-
-                if (!pedido) {
-                    // Sem pedido activo: garante que tudo está escondido
-                    document.getElementById('bloco-pedido').classList.add('hidden');
-                    document.getElementById('bloco-corrida').classList.add('hidden');
-                    pedidoJaNotificado = false;
-                    return;
-                }
-
-                if (pedido.status === 'pendente' && !pedidoJaNotificado) {
-                    pedidoJaNotificado = true;
-                    document.getElementById('bloco-pedido').classList.remove('hidden');
-                    document.getElementById('bloco-corrida').classList.add('hidden');
-                }
-
-                if (pedido.status === 'aceite') {
-                    document.getElementById('bloco-pedido').classList.add('hidden');
-                    document.getElementById('bloco-corrida').classList.remove('hidden');
-                    atualizarMiniMapa(pedido.cliente_lat, pedido.cliente_lng);
-                }
-            } catch (err) {
-                console.warn('Erro ao verificar pedido:', err);
-            }
-        }
-
-        // --- Condutor aceita ou recusa o pedido ---
-        async function responderPedido(resposta) {
-            if (!idDocCondutor) return;
-            try {
-                await fetch('/api/enregistrer', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'responder_pedido', id_doc: idDocCondutor, resposta: resposta })
-                });
-            } catch (err) {
-                console.warn('Erro ao responder pedido:', err);
-            }
-
-            document.getElementById('bloco-pedido').classList.add('hidden');
-            if (resposta === 'recusado') {
-                pedidoJaNotificado = false;
-            }
-        }
-
-        // --- Cria ou atualiza a mini-carte com a posição do cliente ---
-        function atualizarMiniMapa(clienteLat, clienteLng) {
-            if (!clienteLat || !clienteLng) return;
-
-            if (!miniMap) {
-                miniMap = L.map('mini-map').setView([clienteLat, clienteLng], 15);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors',
-                    maxZoom: 19
-                }).addTo(miniMap);
-            }
-
-            if (marcadorCliente) {
-                marcadorCliente.setLatLng([clienteLat, clienteLng]);
-            } else {
-                marcadorCliente = L.circleMarker([clienteLat, clienteLng], {
-                    radius: 10, fillColor: "#8b5cf6", color: "#ffffff", weight: 3, fillOpacity: 1
-                }).addTo(miniMap).bindPopup("Cliente");
-            }
-
-            if (ultimaPosicaoCondutor.lat && ultimaPosicaoCondutor.lng) {
-                if (marcadorCondutor) {
-                    marcadorCondutor.setLatLng([ultimaPosicaoCondutor.lat, ultimaPosicaoCondutor.lng]);
-                } else {
-                    marcadorCondutor = L.circleMarker([ultimaPosicaoCondutor.lat, ultimaPosicaoCondutor.lng], {
-                        radius: 9, fillColor: "#f97316", color: "#ffffff", weight: 2, fillOpacity: 0.95
-                    }).addTo(miniMap).bindPopup("Tu");
-                }
-
-                const distancia = calcularDistanciaKm(ultimaPosicaoCondutor.lat, ultimaPosicaoCondutor.lng, clienteLat, clienteLng);
-                const texto = distancia < 1 ? `A ${Math.round(distancia * 1000)} metros do cliente` : `A ${distancia.toFixed(2)} km do cliente`;
-                document.getElementById('corrida-distancia').textContent = texto;
-
-                const grupo = L.featureGroup([marcadorCliente, marcadorCondutor]);
-                miniMap.fitBounds(grupo.getBounds(), { padding: [30, 30] });
-            } else {
-                miniMap.setView([clienteLat, clienteLng], 15);
-            }
-        }
-
-        function calcularDistanciaKm(lat1, lon1, lat2, lon2) {
-            const R = 6371;
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                      Math.sin(dLon/2) * Math.sin(dLon/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
-        }
-
-        // --- Condutor termina a corrida ---
-        async function terminarCorrida() {
-            if (!idDocCondutor) return;
-            if (!confirm("Confirmar o fim da corrida?")) return;
-
-            try {
-                await fetch('/api/enregistrer', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'terminar_corrida', id_doc: idDocCondutor })
@@ -465,7 +388,11 @@
             marcadorCondutor = null;
             pedidoJaNotificado = false;
         }
+
+        // --- Expor as funções chamadas via onclick no HTML (necessário porque o script é um module) ---
+        window.retomarComNumero = retomarComNumero;
+        window.responderPedido = responderPedido;
+        window.terminarCorrida = terminarCorrida;
+        window.pararEVoltar = pararEVoltar;
     </script>
-</body>
-</html>
-    
+</body
