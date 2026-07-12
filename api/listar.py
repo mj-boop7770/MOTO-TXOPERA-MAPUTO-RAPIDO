@@ -42,6 +42,12 @@ class handler(BaseHTTPRequestHandler):
             query = parse_qs(urlparse(self.path).query)
             modo_admin = query.get("admin", ["0"])[0] == "1"
             id_doc_unico = query.get("id_doc", [None])[0]
+            if id_doc_unico:
+                # Filet de sécurité : si le "+" est arrivé mal encodé (transformé en espace
+                # par le navigateur ou une vieille version en cache), on le restaure.
+                id_doc_unico = id_doc_unico.strip()
+                if id_doc_unico and not id_doc_unico.startswith('+') and len(id_doc_unico) >= 12 and id_doc_unico[:3] == "258":
+                    id_doc_unico = "+" + id_doc_unico
 
             db = firestore.client()
 
@@ -98,4 +104,4 @@ class handler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({"erreur": str(e)}).encode('utf-8'))
-            
+    
