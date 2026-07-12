@@ -41,7 +41,7 @@
             <p class="text-sm font-bold text-amber-400 mb-3">🔑 Já és condutor? Continua rápido</p>
             <div class="flex">
                 <span class="bg-slate-900 border border-r-0 border-slate-700 rounded-l-xl px-3 py-3 text-slate-400 font-bold select-none">+258</span>
-                <input type="tel" id="numero-retomar" placeholder="84XXXXXXX" maxlength="9" pattern="[0-9]{9}" inputmode="numeric" class="flex-1 bg-slate-900 border border-slate-700 px-4 py-3 text-white focus:border-amber-500 focus:outline-none">
+                <input type="tel" id="numero-retomar" placeholder="84XXXXXXX" maxlength="9" pattern="[0-9]{9}" inputmode="numeric" class="flex-1 bg-slate-900 border border-slate-700 px-4 py-3 text-white focus:border-amber-500 focus:outline-none" />
                 <button onclick="retomarComNumero()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black px-4 py-3 rounded-r-xl transition">
                     Ir
                 </button>
@@ -62,24 +62,24 @@
 
                 <div>
                     <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Nome do Condutor</label>
-                    <input type="text" id="nom" required placeholder="Ex: João" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none">
+                    <input type="text" id="nom" required placeholder="Ex: João" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none" />
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Número de Telefone</label>
                     <div class="flex">
                         <span class="bg-slate-900 border border-r-0 border-slate-700 rounded-l-xl px-3 py-3 text-slate-400 font-bold select-none">+258</span>
-                        <input type="tel" id="telephone" required placeholder="84XXXXXXX" maxlength="9" pattern="[0-9]{9}" inputmode="numeric" class="w-full bg-slate-900 border border-slate-700 rounded-r-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none">
+                        <input type="tel" id="telephone" required placeholder="84XXXXXXX" maxlength="9" pattern="[0-9]{9}" inputmode="numeric" class="w-full bg-slate-900 border border-slate-700 rounded-r-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none" />
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Número da Placa</label>
-                    <input type="text" id="plaque" required placeholder="Ex: MM-XX-XX" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none">
+                    <input type="text" id="plaque" required placeholder="Ex: MM-XX-XX" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-white focus:border-amber-500 focus:outline-none" />
                 </div>
 
                 <div class="pt-2">
-                    <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-black py-3.5 px-4 rounded-xl shadow-lg active:scale-[0.98] transition-all uppercase tracking-wider text-sm">
+                    <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-black py-3.5 px-4 rounded-xl shadow-lg active:scale-95 transition">
                         🚀 Registar no sistema
                     </button>
                 </div>
@@ -105,7 +105,7 @@
                 <button onclick="responderPedido('recusado')" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-bold py-3 rounded-xl transition">
                     ❌ Recusar
                 </button>
-                <button onclick="responderPedido('aceite')" class="flex-1 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-white font-black py-3 rounded-xl shadow-lg transition">
+                <button onclick="responderPedido('aceite')" class="flex-1 bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-400 hover:to-green-400 text-white font-black py-3 rounded-xl transition">
                     ✅ Aceitar
                 </button>
             </div>
@@ -360,6 +360,101 @@
             }, { enableHighAccuracy: true });
         }
 
+        // --- Responde a uma pedido de corrida ---
+        async function responderPedido(resposta) {
+            if (!idDocCondutor) return;
+
+            try {
+                await fetch('/api/enregistrer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'responder_pedido',
+                        id_doc: idDocCondutor,
+                        status: resposta
+                    })
+                });
+            } catch (err) {
+                console.error("Erro ao responder ao pedido:", err);
+                alert("Erro ao responder ao pedido. Tenta novamente.");
+            }
+        }
+
+        // --- Termina uma corrida em curso ---
+        async function terminarCorrida() {
+            if (!idDocCondutor) return;
+
+            try {
+                await fetch('/api/enregistrer', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'terminar_corrida',
+                        id_doc: idDocCondutor,
+                        status: 'disponivel'
+                    })
+                });
+                
+                document.getElementById('bloco-corrida').classList.add('hidden');
+                marcadorCliente = null;
+                marcadorCondutor = null;
+                pedidoJaNotificado = false;
+            } catch (err) {
+                console.error("Erro ao terminar corrida:", err);
+                alert("Erro ao terminar corrida. Tenta novamente.");
+            }
+        }
+
+        // --- Inicializa e atualiza a mini-carta ---
+        function atualizarMiniMapa(clienteLat, clienteLng) {
+            if (!miniMap) {
+                miniMap = L.map('mini-map').setView([-23.8645, 35.3073], 14); // Centro Maputo
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(miniMap);
+            }
+
+            if (marcadorCondutor) miniMap.removeLayer(marcadorCondutor);
+            if (marcadorCliente) miniMap.removeLayer(marcadorCliente);
+
+            // Marcador do condutor (última posição conhecida)
+            if (ultimaPosicaoCondutor.lat && ultimaPosicaoCondutor.lng) {
+                marcadorCondutor = L.marker([ultimaPosicaoCondutor.lat, ultimaPosicaoCondutor.lng], {
+                    title: 'A tua posição'
+                })
+                    .bindPopup('<strong>Você está aqui</strong>')
+                    .addTo(miniMap);
+            }
+
+            // Marcador do cliente
+            marcadorCliente = L.marker([clienteLat, clienteLng], {
+                title: 'Posição do cliente'
+            })
+                .bindPopup('<strong>Cliente aqui</strong>')
+                .addTo(miniMap);
+
+            // Centra a vista entre os dois pontos
+            const group = new L.featureGroup([marcadorCondutor, marcadorCliente]);
+            miniMap.fitBounds(group.getBounds().pad(0.1));
+
+            // Calcula a distância
+            const dist = calcularDistancia(ultimaPosicaoCondutor.lat, ultimaPosicaoCondutor.lng, clienteLat, clienteLng);
+            document.getElementById('corrida-distancia').textContent = `Distância até ao cliente: ${dist.toFixed(1)} km`;
+        }
+
+        // --- Calcula distância entre dois pontos (Haversine) ---
+        function calcularDistancia(lat1, lng1, lat2, lng2) {
+            const R = 6371; // Raio da Terra em km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
         async function pararEVoltar() {
             const confirmado = confirm(
                 "Vais ficar offline e deixar de aparecer no mapa dos clientes.\n\n" +
@@ -370,20 +465,40 @@
             if (!confirmado) return;
 
             if (heartbeatTimer) clearInterval(heartbeatTimer);
-            if (unsubscribePedido) { unsubscribePedido(); unsubscribePedido = null; }
+            if (unsubscribePedido) { 
+                unsubscribePedido(); 
+                unsubscribePedido = null; 
+            }
 
             if (idDocCondutor) {
                 try {
                     await fetch('/api/enregistrer', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'terminar_corrida', id_doc: idDocCondutor })
-                });
-            } catch (err) {
-                console.warn('Erro ao terminar corrida:', err);
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            action: 'terminar_sessao', 
+                            id_doc: idDocCondutor 
+                        })
+                    });
+                } catch (err) {
+                    console.warn('Erro ao terminar sessão:', err);
+                }
             }
 
+            // Limpar dados locais
+            localStorage.removeItem('haulzao_condutor_id');
+            idDocCondutor = null;
+            document.getElementById('bloco-online').classList.add('hidden');
+            document.getElementById('bloco-pedido').classList.add('hidden');
             document.getElementById('bloco-corrida').classList.add('hidden');
+            document.getElementById('bloco-formulario').classList.remove('hidden');
+            document.getElementById('bloco-retomar').classList.remove('hidden');
+            
+            // Limpar mapa se existir
+            if (miniMap) {
+                miniMap.remove();
+                miniMap = null;
+            }
             marcadorCliente = null;
             marcadorCondutor = null;
             pedidoJaNotificado = false;
@@ -395,4 +510,5 @@
         window.terminarCorrida = terminarCorrida;
         window.pararEVoltar = pararEVoltar;
     </script>
-</body
+</body>
+</html>
