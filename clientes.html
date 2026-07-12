@@ -142,7 +142,22 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, query, where, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCuwng4WSXIzf0XqMIq2Sq_vMFSh6icS40",
+            authDomain: "haulzao-2.firebaseapp.com",
+            databaseURL: "https://haulzao-2-default-rtdb.firebaseio.com",
+            projectId: "haulzao-2",
+            storageBucket: "haulzao-2.firebasestorage.app",
+            messagingSenderId: "1075221128018",
+            appId: "1:1075221128018:web:39e694d3fb94858894508b"
+        };
+        const firebaseApp = initializeApp(firebaseConfig);
+        const db = getFirestore(firebaseApp);
+
         const map = L.map('map').setView([-25.965, 32.583], 14);
         let userMarker = null;
         let clientLat = null;
@@ -189,7 +204,7 @@
                             fillOpacity: 1
                         }).addTo(map).bindPopup("<b style='color:#ffffff;'>Tu estás aqui</b>");
                     }
-                    carregarMotoristas();
+                    renderizarMotoristas(ultimaListaMotoristas); // recalcula distâncias com a nova posição
                     esconderGpsObrigatorio();
                 }, error => {
                     console.warn("GPS desativado pelo cliente.");
@@ -225,10 +240,10 @@
         }
 
         // --- PARTILHA DE POSIÇÃO COM O CONDUTOR CONTACTADO ---
-        const INTERVALO_PEDIDO_MS = 15000; // 15 segundos
+        const INTERVALO_PEDIDO_MS = 15000; // 15 segundos (só para o heartbeat de posição, não para verificar)
         let idDocContactado = null;
         let intervaloPedido = null;
-        let intervaloVerificarPedido = null;
+        let unsubscribePedido = null;
 
         function iniciarPedidoCliente(idDoc) {
             if (!clientLat || !clientLng) return; // GPS obrigatório já garante isto, mas por segurança
@@ -259,18 +274,12 @@
                 }).catch(() => {});
             }, INTERVALO_PEDIDO_MS);
 
-            if (intervaloVerificarPedido) clearInterval(intervaloVerificarPedido);
-            intervaloVerificarPedido = setInterval(verificarEstadoPedido, INTERVALO_PEDIDO_MS);
-        }
-
-        async function verificarEstadoPedido() {
-            if (!idDocContactado) return;
-            try {
-                const response = await fetch('/api/listar?id_doc=' + encodeURIComponent(idDocContactado));
-                if (!response.ok) return;
-                const dados = await response.json();
-                const pedido = dados.cliente_pedido;
-
+            // Escuta em tempo real (Firestore) em vez de perguntar a cada X segundos
+            if (unsubscribePedido) unsubscribePedido();
+            const refCondutor = doc(db, "motoristas", idDoc);
+            unsubscribePedido = onSnapshot(refCondutor, (docSnap) => {
+                if (!docSnap.exists()) return;
+                const pedido = docSnap.data().cliente_pedido;
                 if (!pedido) return;
 
                 if (pedido.status === 'aceite') {
@@ -279,9 +288,7 @@
                     mostrarBannerPedido('recusado');
                     pararPartilhaAnterior();
                 }
-            } catch (err) {
-                console.warn('Erro ao verificar pedido:', err);
-            }
+            });
         }
 
         function mostrarBannerPedido(estado) {
@@ -322,9 +329,8 @@
 
         function pararPartilhaAnterior() {
             if (intervaloPedido) clearInterval(intervaloPedido);
-            if (intervaloVerificarPedido) clearInterval(intervaloVerificarPedido);
+            if (unsubscribePedido) { unsubscribePedido(); unsubscribePedido = null; }
             intervaloPedido = null;
-            intervaloVerificarPedido = null;
             idDocContactado = null;
         }
 
@@ -347,75 +353,83 @@
             abrirTutorial();
         }
 
-        async function carregarMotoristas() {
-            try {
-                const response = await fetch('/api/listar');
-                const motoristas = await response.json();
+        let ultimaListaMotoristas = [];
 
-                map.eachLayer(layer => {
-                    if (layer instanceof L.CircleMarker && layer !== userMarker) {
-                        map.removeLayer(layer);
-                    }
-                });
+        function renderizarMotoristas(motoristas) {
+            map.eachLayer(layer => {
+                if (layer instanceof L.CircleMarker && layer !== userMarker) {
+                    map.removeLayer(layer);
+                }
+            });
 
-                motoristas.forEach(m => {
-                    if (m.latitude && m.longitude) {
-                        const cor = m.tipo === "moto" ? "#f97316" : m.tipo === "carro" ? "#3b82f6" : "#22c55e";
-                        const iconeEmoji = m.tipo === "moto" ? "🏍️" : m.tipo === "carro" ? "🚗" : "🛺";
+            motoristas.forEach(m => {
+                if (m.latitude && m.longitude) {
+                    const cor = m.tipo === "moto" ? "#f97316" : m.tipo === "carro" ? "#3b82f6" : "#22c55e";
+                    const iconeEmoji = m.tipo === "moto" ? "🏍️" : m.tipo === "carro" ? "🚗" : "🛺";
 
-                        const textoDistancia = (clientLat && clientLng) 
-                            ? calcularDistance(clientLat, clientLng, m.latitude, m.longitude)
-                            : "Activa o teu GPS para ver a distância";
+                    const textoDistancia = (clientLat && clientLng) 
+                        ? calcularDistance(clientLat, clientLng, m.latitude, m.longitude)
+                        : "Activa o teu GPS para ver a distância";
 
-                        // Message WhatsApp formaté pour ton futur bot
-                        const msgWhatsapp = encodeURIComponent(
-                            `Olá! Preciso de um transporte, por favor.\n\n📍 Destino: (Escreva para onde vai)\n📱 Contacto: ${m.telephone}`
-                        );
+                    const msgWhatsapp = encodeURIComponent(
+                        `Olá! Preciso de um transporte, por favor.\n\n📍 Destino: (Escreva para onde vai)\n📱 Contacto: ${m.telephone}`
+                    );
 
-                        // Message SMS brut par défaut
-                        const msgSMS = encodeURIComponent("Olá! Vi que estás disponível no Haulzao-2. Preciso de um transporte.");
+                    const msgSMS = encodeURIComponent("Olá! Vi que estás disponível no Haulzao-2. Preciso de um transporte.");
 
-                        const marker = L.circleMarker([m.latitude, m.longitude], {
-                            radius: 12,
-                            fillColor: cor,
-                            color: "#ffffff",
-                            weight: 2,
-                            fillOpacity: 0.9
-                        }).addTo(map);
+                    const marker = L.circleMarker([m.latitude, m.longitude], {
+                        radius: 12,
+                        fillColor: cor,
+                        color: "#ffffff",
+                        weight: 2,
+                        fillOpacity: 0.9
+                    }).addTo(map);
 
-                        const idSeguro = m.id_doc || m.telephone;
+                    const idSeguro = m.id_doc || m.telephone;
 
-                        const popupContent = `
-                            <div class="p-1 w-[200px]">
-                                <h3 class="text-base font-bold flex items-center gap-1">${iconeEmoji} ${m.nom.toUpperCase()}</h3>
-                                <p class="text-xs text-slate-300 mt-1">Placa: <span class="bg-slate-700 px-1.5 py-0.5 rounded font-mono text-white text-[11px]">${m.plaque}</span></p>
-                                <p class="text-xs text-amber-400 font-semibold mt-1.5 mb-2">📍 ${textoDistancia}</p>
+                    const popupContent = `
+                                                <div class="p-1 w-[200px]">
+                            <h3 class="text-base font-bold flex items-center gap-1">${iconeEmoji} ${m.nom.toUpperCase()}</h3>
+                            <p class="text-xs text-slate-300 mt-1">Placa: <span class="bg-slate-700 px-1.5 py-0.5 rounded font-mono text-white text-[11px]">${m.plaque}</span></p>
+                            <p class="text-xs text-amber-400 font-semibold mt-1.5 mb-2">📍 ${textoDistancia}</p>
+                            
+                            <div class="flex flex-col gap-2 mt-3">
+                                <a href="tel:${m.telephone}" onclick="registrarContato('${idSeguro}','ligar'); iniciarPedidoCliente('${idSeguro}');" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-xs py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1">
+                                    📞 Ligar para Condutor
+                                </a>
                                 
-                                <div class="flex flex-col gap-2 mt-3">
-                                    <a href="tel:${m.telephone}" onclick="registrarContato('${idSeguro}','ligar'); iniciarPedidoCliente('${idSeguro}');" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-xs py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1">
-                              📞 Ligar para Condutor
+                                <div class="flex gap-2">
+                                    <a href="https://wa.me/${m.telephone.replace('+','')}?text=${msgWhatsapp}" onclick="registrarContato('${idSeguro}','whatsapp'); iniciarPedidoCliente('${idSeguro}');" target="_blank" class="w-1/2 bg-green-500 hover:bg-green-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
+                                        💬 WhatsApp
                                     </a>
-                                    
-                                    <div class="flex gap-2">
-                                        <a href="https://wa.me/${m.telephone.replace('+','')}?text=${msgWhatsapp}" onclick="registrarContato('${idSeguro}','whatsapp'); iniciarPedidoCliente('${idSeguro}');" target="_blank" class="w-1/2 bg-green-500 hover:bg-green-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
-                                            💬 WhatsApp
-                                        </a>
-                                        <a href="sms:${m.telephone}?body=${msgSMS}" onclick="registrarContato('${idSeguro}','sms'); iniciarPedidoCliente('${idSeguro}');" class="w-1/2 bg-blue-500 hover:bg-blue-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
-                                            ✉️ Enviar SMS
-                                        </a>
-                                    </div>
+                                    <a href="sms:${m.telephone}?body=${msgSMS}" onclick="registrarContato('${idSeguro}','sms'); iniciarPedidoCliente('${idSeguro}');" class="w-1/2 bg-blue-500 hover:bg-blue-600 text-white text-center font-bold text-xs py-2 px-1 rounded-lg shadow transition flex items-center justify-center gap-0.5">
+                                        ✉️ Enviar SMS
+                                    </a>
                                 </div>
                             </div>
-                        `;
-                        marker.bindPopup(popupContent);
-                    }
-                });
-            } catch (err) {
-                console.error("Erro ao carregar dados do Haulzao-2:", err);
-            }
+                        </div>
+                    `;
+                    marker.bindPopup(popupContent);
+                }
+            });
         }
-        
-        setInterval(carregarMotoristas, 30000);
+
+        // --- ESCUTA EM TEMPO REAL: substitui o antigo polling de 30 em 30 segundos ---
+        const qMotoristas = query(collection(db, "motoristas"), where("status", "==", "disponivel"));
+        onSnapshot(qMotoristas, (snapshot) => {
+            ultimaListaMotoristas = snapshot.docs.map(d => ({ id_doc: d.id, ...d.data() }));
+            renderizarMotoristas(ultimaListaMotoristas);
+        }, (err) => {
+            console.error("Erro na escuta em tempo real:", err);
+        });
+
+        // --- Expor as funções chamadas via onclick no HTML (necessário porque o script é um module) ---
+        window.abrirTutorial = abrirTutorial;
+        window.fecharTutorial = fecharTutorial;
+        window.localizarCliente = localizarCliente;
+        window.cancelarPedido = cancelarPedido;
+        window.registrarContato = registrarContato;
+        window.iniciarPedidoCliente = iniciarPedidoCliente;
     </script>
 </body>
 </html
