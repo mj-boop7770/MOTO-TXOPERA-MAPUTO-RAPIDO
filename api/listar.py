@@ -20,6 +20,16 @@ LIMITE_VISIBILIDADE = timedelta(hours=2)
 
 def montar_motorista(doc):
     m = doc.to_dict()
+
+    pedido = m.get("cliente_pedido")
+    pedido_limpo = None
+    if pedido:
+        pedido_limpo = {
+            "status": pedido.get("status"),
+            "cliente_lat": pedido.get("cliente_lat"),
+            "cliente_lng": pedido.get("cliente_lng")
+        }
+
     return {
         "id_doc": doc.id,
         "tipo": m.get("tipo"),
@@ -33,7 +43,7 @@ def montar_motorista(doc):
         "contactos_ligar": m.get("contactos_ligar", 0),
         "contactos_whatsapp": m.get("contactos_whatsapp", 0),
         "contactos_sms": m.get("contactos_sms", 0),
-        "cliente_pedido": m.get("cliente_pedido")
+        "cliente_pedido": pedido_limpo
     }
 
 class handler(BaseHTTPRequestHandler):
@@ -104,4 +114,4 @@ class handler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({"erreur": str(e)}).encode('utf-8'))
-    
+                    
