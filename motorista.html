@@ -37,6 +37,18 @@
             </ol>
         </div>
 
+        <div id="bloco-retomar" class="bg-slate-800 border border-amber-700 p-5 rounded-2xl shadow-xl mb-5">
+            <p class="text-sm font-bold text-amber-400 mb-3">🔑 Já és condutor? Continua rápido</p>
+            <div class="flex">
+                <span class="bg-slate-900 border border-r-0 border-slate-700 rounded-l-xl px-3 py-3 text-slate-400 font-bold select-none">+258</span>
+                <input type="tel" id="numero-retomar" placeholder="84XXXXXXX" maxlength="9" pattern="[0-9]{9}" inputmode="numeric" class="flex-1 bg-slate-900 border border-slate-700 px-4 py-3 text-white focus:border-amber-500 focus:outline-none">
+                <button onclick="retomarComNumero()" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-black px-4 py-3 rounded-r-xl transition">
+                    Ir
+                </button>
+            </div>
+            <p id="retomar-status" class="text-xs text-slate-400 mt-2"></p>
+        </div>
+
         <div id="bloco-formulario" class="bg-slate-800 border border-slate-700 p-6 rounded-2xl shadow-xl">
             <form id="form-motorista" class="space-y-4">
                 <div>
@@ -149,7 +161,7 @@
                     };
 
                     try {
-                        // Cible la route générée par enregistrer.py
+                        // Cible la route générée por enregistrer.py
                         const response = await fetch('/api/enregistrer', { 
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -158,6 +170,7 @@
 
                         if (response.ok) {
                             idDocCondutor = dados.telephone;
+                            localStorage.setItem('haulzao_condutor_id', idDocCondutor);
                             entrarModoOnline();
                         } else {
                             const errData = await response.text();
@@ -174,8 +187,90 @@
             }
         });
 
+        // --- Ao abrir a página, verifica se já havia uma sessão de condutor activa ---
+        (function retomarSessaoSeExistir() {
+            const idGuardado = localStorage.getItem('haulzao_condutor_id');
+            if (idGuardado) {
+                idDocCondutor = idGuardado;
+                entrarModoOnline();
+            }
+        })();
+
+        // --- Condutor já registado antes: reconecta-o direto, sem preencher o formulário ---
+        async function retomarComNumero() {
+            const statusEl = document.getElementById('retomar-status');
+            const numeroLocal = document.getElementById('numero-retomar').value.trim().replace(/\D/g, '');
+
+            if (numeroLocal.length !== 9) {
+                statusEl.textContent = "Introduz os 9 dígitos do teu número (sem o +258).";
+                statusEl.className = "text-xs text-rose-400 mt-2";
+                return;
+            }
+
+            const idDoc = "+258" + numeroLocal;
+            statusEl.textContent = "A procurar o teu perfil...";
+            statusEl.className = "text-xs text-slate-400 mt-2";
+
+            try {
+                const response = await fetch('/api/listar?id_doc=' + encodeURIComponent(idDoc));
+
+                if (response.status === 404) {
+                    statusEl.textContent = "Número não encontrado. Preenche o formulário abaixo para te registares.";
+                    statusEl.className = "text-xs text-amber-400 mt-2";
+                    return;
+                }
+
+                if (!response.ok) {
+                    statusEl.textContent = "Erro ao contactar o servidor. Tenta novamente.";
+                    statusEl.className = "text-xs text-rose-400 mt-2";
+                    return;
+                }
+
+                const perfil = await response.json();
+                statusEl.textContent = `Perfil encontrado: ${perfil.nom} (${perfil.tipo}). A atualizar a tua posição...`;
+                statusEl.className = "text-xs text-emerald-400 mt-2";
+
+                if (!("geolocation" in navigator)) {
+                    statusEl.textContent = "O teu telefone não suporta Geolocalização.";
+                    statusEl.className = "text-xs text-rose-400 mt-2";
+                    return;
+                }
+
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    try {
+                        await fetch('/api/enregistrer', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                action: 'assign',
+                                id_doc: idDoc,
+                                status: 'disponivel',
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude
+                            })
+                        });
+
+                        idDocCondutor = idDoc;
+                        localStorage.setItem('haulzao_condutor_id', idDocCondutor);
+                        entrarModoOnline();
+                    } catch (err) {
+                        statusEl.textContent = "Erro de conexão ao atualizar posição.";
+                        statusEl.className = "text-xs text-rose-400 mt-2";
+                    }
+                }, (err) => {
+                    statusEl.textContent = "Erro de GPS: " + err.message;
+                    statusEl.className = "text-xs text-rose-400 mt-2";
+                }, { enableHighAccuracy: true });
+
+            } catch (err) {
+                statusEl.textContent = "Erro de conexão ao servidor.";
+                statusEl.className = "text-xs text-rose-400 mt-2";
+            }
+        }
+
         // --- Passa para o ecrã "online" e arranca o heartbeat automático ---
         function entrarModoOnline() {
+            document.getElementById('bloco-retomar').classList.add('hidden');
             document.getElementById('bloco-formulario').classList.add('hidden');
             document.getElementById('bloco-online').classList.remove('hidden');
 
@@ -219,9 +314,31 @@
             }, { enableHighAccuracy: true });
         }
 
-        function pararEVoltar() {
+        async function pararEVoltar() {
+            const confirmado = confirm(
+                "Vais ficar offline e deixar de aparecer no mapa dos clientes.\n\n" +
+                "Para voltares mais tarde: insere o teu número no ecrã inicial e clica 'Ir' (se já és condutor), " +
+                "ou preenche o formulário se for a tua primeira vez.\n\n" +
+                "Confirmar saída?"
+            );
+            if (!confirmado) return;
+
             if (heartbeatTimer) clearInterval(heartbeatTimer);
             if (intervaloPedidoTimer) clearInterval(intervaloPedidoTimer);
+
+            if (idDocCondutor) {
+                try {
+                    await fetch('/api/enregistrer', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'assign', id_doc: idDocCondutor, status: 'offline' })
+                    });
+                } catch (err) {
+                    console.warn('Erro ao marcar offline:', err);
+                }
+            }
+
+            localStorage.removeItem('haulzao_condutor_id');
             window.location.href = "index.html";
         }
 
@@ -351,6 +468,4 @@
     </script>
 </body>
 </html>
-
-
-                        
+    
