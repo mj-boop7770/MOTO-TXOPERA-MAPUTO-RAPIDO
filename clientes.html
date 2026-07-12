@@ -266,7 +266,7 @@
         async function verificarEstadoPedido() {
             if (!idDocContactado) return;
             try {
-                const response = await fetch('/api/listar?id_doc=' + idDocContactado);
+                const response = await fetch('/api/listar?id_doc=' + encodeURIComponent(idDocContactado));
                 if (!response.ok) return;
                 const dados = await response.json();
                 const pedido = dados.cliente_pedido;
@@ -393,7 +393,7 @@
                                 
                                 <div class="flex flex-col gap-2 mt-3">
                                     <a href="tel:${m.telephone}" onclick="registrarContato('${idSeguro}','ligar'); iniciarPedidoCliente('${idSeguro}');" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-center font-bold text-xs py-2 px-3 rounded-lg shadow transition flex items-center justify-center gap-1">
-                                          📞 Ligar para Condutor
+                              📞 Ligar para Condutor
                                     </a>
                                     
                                     <div class="flex gap-2">
@@ -414,8 +414,8 @@
                 console.error("Erro ao carregar dados do Haulzao-2:", err);
             }
         }
-
+        
         setInterval(carregarMotoristas, 30000);
     </script>
 </body>
-</html>
+</html
