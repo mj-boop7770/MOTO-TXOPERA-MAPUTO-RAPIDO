@@ -229,7 +229,7 @@
         async function verificarPedido() {
             if (!idDocCondutor) return;
             try {
-                const response = await fetch('/api/listar?id_doc=' + idDocCondutor);
+                const response = await fetch('/api/listar?id_doc=' + encodeURIComponent(idDocCondutor));
                 if (!response.ok) return;
                 const dados = await response.json();
                 const pedido = dados.cliente_pedido;
@@ -353,4 +353,4 @@
 </html>
 
 
-    
+                        
