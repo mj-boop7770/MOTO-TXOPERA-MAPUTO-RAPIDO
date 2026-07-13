@@ -161,19 +161,27 @@
         const db = getFirestore(firebaseApp);
 
         const map = L.map('map').setView([-25.965, 32.583], 14);
-        const clusterMotoristas = L.markerClusterGroup({
-            maxClusterRadius: 40,
-            spiderfyOnMaxZoom: true
-        });
-        map.addLayer(clusterMotoristas);
-        let userMarker = null;
-        let clientLat = null;
-        let clientLng = null;
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 19
         }).addTo(map);
+
+        let clusterMotoristas;
+        try {
+            clusterMotoristas = L.markerClusterGroup({
+                maxClusterRadius: 40,
+                spiderfyOnMaxZoom: true
+            });
+            map.addLayer(clusterMotoristas);
+        } catch (err) {
+            console.error("Clustering indisponível, a usar modo simples:", err);
+            clusterMotoristas = { clearLayers: () => {}, addLayer: (m) => m.addTo(map) };
+        }
+
+        let userMarker = null;
+        let clientLat = null;
+        let clientLng = null;
 
         function calcularDistance(lat1, lon1, lat2, lon2) {
             if (!lat1 || !lon1 || !lat2 || !lon2) return "Distância desconhecida";
@@ -387,11 +395,11 @@
                         weight: 2,
                         fillOpacity: 0.9
                     });
-                    
+
                     const idSeguro = m.id_doc || m.telephone;
 
                     const popupContent = `
-                        <div class="p-1 w-[200px]">
+                      <div class="p-1 w-[200px]">
                             <h3 class="text-base font-bold flex items-center gap-1">${iconeEmoji} ${m.nom.toUpperCase()}</h3>
                             <p class="text-xs text-slate-300 mt-1">Placa: <span class="bg-slate-700 px-1.5 py-0.5 rounded font-mono text-white text-[11px]">${m.plaque}</span></p>
                             <p class="text-xs text-amber-400 font-semibold mt-1.5 mb-2">📍 ${textoDistancia}</p>
