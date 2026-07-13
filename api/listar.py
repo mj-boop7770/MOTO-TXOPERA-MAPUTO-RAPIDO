@@ -52,19 +52,28 @@ class handler(BaseHTTPRequestHandler):
             query = parse_qs(urlparse(self.path).query)
             modo_admin = query.get("admin", ["0"])[0] == "1"
             id_doc_unico = query.get("id_doc", [None])[0]
-            if id_doc_unico:
-                # Filet de sécurité : si le "+" est arrivé mal encodé (transformé en espace
-                # par le navigateur ou une vieille version en cache), on le restaure.
-                id_doc_unico = id_doc_unico.strip()
-                if id_doc_unico and not id_doc_unico.startswith('+') and len(id_doc_unico) >= 12 and id_doc_unico[:3] == "258":
-                    id_doc_unico = "+" + id_doc_unico
 
             db = firestore.client()
+
+            # DEBUG TEMPORÁRIO: confirma a que projeto Firebase o backend está realmente ligado
+            if query.get("debug", ["0"])[0] == "1":
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"project_id_real": db._client.project}).encode('utf-8'))
+                return
 
             # MODO ÚNICO : devolve apenas 1 condutor (usado pelo motorista.html
             # para ver o seu próprio pedido pendente, e pelo cliente para
             # acompanhar o estado da sua solicitação)
             if id_doc_unico:
+                # Filet de sécurité : si le "+" est arrivé mal encodé (transformé en espace
+                # par le navegador ou une vieille version en cache), on le restaure.
+                id_doc_unico = id_doc_unico.strip()
+                if id_doc_unico and not id_doc_unico.startswith('+') and len(id_doc_unico) >= 12 and id_doc_unico[:3] == "258":
+                    id_doc_unico = "+" + id_doc_unico
+
                 doc = db.collection("motoristas").document(str(id_doc_unico)).get()
                 if not doc.exists:
                     self.send_response(404)
@@ -114,4 +123,4 @@ class handler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps({"erreur": str(e)}).encode('utf-8'))
-                    
+        
